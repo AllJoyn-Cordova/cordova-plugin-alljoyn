@@ -1,0 +1,161 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="Globals">
+    <MSBuildAllProjects>$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
+    <HasSharedItems>true</HasSharedItems>
+    <ItemsProjectGuid>{a470b6ae-1f80-457c-8baa-b50f35373245}</ItemsProjectGuid>
+    <ItemsRootNamespace>AllJoynWinRTComponent</ItemsRootNamespace>
+    <ItemsProjectName>AllJoynWinRTComponent.Shared</ItemsProjectName>
+    <CodeSharingProject>248F659F-DAC5-46E8-AC09-60EC9FC95053</CodeSharingProject>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(MSBuildThisFileDirectory)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ProjectCapability Include="SourceItemsFromImports" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\ajtcl\crypto\aj_sw_crypto.c">
+      <CompileAsWinRT>true</CompileAsWinRT>
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\ajtcl\crypto\ecc\aj_crypto_ecc.c">
+      <CompileAsWinRT>true</CompileAsWinRT>
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\ajtcl\crypto\ecc\aj_crypto_sha2.c">
+      <CompileAsWinRT>true</CompileAsWinRT>
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\ajtcl\external\sha2\sha2.c">
+      <CompileAsWinRT>true</CompileAsWinRT>
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+	<ClCompile Include="$(MSBuildThisFileDirectory)..\target\winrt\aj_malloc.c">
+      <CompileAsWinRT>true</CompileAsWinRT>
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\ajtcl\src\aj_about.c">
+      <CompileAsWinRT>true</CompileAsWinRT>
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\ajtcl\src\aj_bufio.c">
+      <CompileAsWinRT>true</CompileAsWinRT>
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\ajtcl\src\aj_cert.c">
+      <CompileAsWinRT>true</CompileAsWinRT>
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\ajtcl\src\aj_connect.c">
+      <CompileAsWinRT>true</CompileAsWinRT>
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\ajtcl\src\aj_crc16.c">
+      <CompileAsWinRT>true</CompileAsWinRT>
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\ajtcl\src\aj_creds.c">
+      <CompileAsWinRT>true</CompileAsWinRT>
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\ajtcl\src\aj_crypto.c">
+      <CompileAsWinRT>true</CompileAsWinRT>
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\ajtcl\src\aj_debug.c">
+      <CompileAsWinRT>true</CompileAsWinRT>
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\ajtcl\src\aj_disco.c">
+      <CompileAsWinRT>true</CompileAsWinRT>
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\ajtcl\src\aj_guid.c">
+      <CompileAsWinRT>true</CompileAsWinRT>
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\ajtcl\src\aj_helper.c">
+      <CompileAsWinRT>true</CompileAsWinRT>
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\ajtcl\src\aj_init.c">
+      <CompileAsWinRT>true</CompileAsWinRT>
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\ajtcl\src\aj_introspect.c">
+      <CompileAsWinRT>true</CompileAsWinRT>
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\ajtcl\src\aj_keyexchange.c">
+      <CompileAsWinRT>true</CompileAsWinRT>
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\ajtcl\src\aj_link_timeout.c">
+      <CompileAsWinRT>true</CompileAsWinRT>
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\ajtcl\src\aj_msg.c">
+      <CompileAsWinRT>true</CompileAsWinRT>
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\ajtcl\src\aj_nvram.c">
+      <CompileAsWinRT>true</CompileAsWinRT>
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\ajtcl\src\aj_serial.c">
+      <CompileAsWinRT>true</CompileAsWinRT>
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\ajtcl\src\aj_serial_rx.c">
+      <CompileAsWinRT>true</CompileAsWinRT>
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\ajtcl\src\aj_serial_tx.c">
+      <CompileAsWinRT>true</CompileAsWinRT>
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\ajtcl\src\aj_std.c">
+      <CompileAsWinRT>true</CompileAsWinRT>
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\ajtcl\src\aj_util.c">
+      <CompileAsWinRT>true</CompileAsWinRT>
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\target\winrt\aj_net.c">
+      <CompileAsWinRT>true</CompileAsWinRT>
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\target\winrt\aj_target_crypto.c">
+      <CompileAsWinRT>true</CompileAsWinRT>
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+	<ClCompile Include="$(MSBuildThisFileDirectory)..\target\winrt\aj_target_nvram.c">
+      <CompileAsWinRT>true</CompileAsWinRT>
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\target\winrt\aj_target_util.c">
+      <CompileAsWinRT>true</CompileAsWinRT>
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\ajtcl\src\aj_bus.c">
+      <CompileAsWinRT>true</CompileAsWinRT>
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>	
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\ajtcl\src\aj_keyauthentication.c">
+      <CompileAsWinRT>true</CompileAsWinRT>
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>		
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\ajtcl\src\aj_peer.c">
+      <CompileAsWinRT>true</CompileAsWinRT>
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>	
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="AllJoynWinRTComponent.cpp" />
+    <ClInclude Include="AllJoynWinRTComponent.h" />
+  </ItemGroup>
+</Project>

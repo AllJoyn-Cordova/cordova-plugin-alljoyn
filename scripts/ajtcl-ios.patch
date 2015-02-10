@@ -1,0 +1,84 @@
+diff -ru upstream/aj_connect.c patched/aj_connect.c
+--- upstream/aj_connect.c 2014-12-10 15:11:47.000000000 +0200
++++ patched/aj_connect.c  2014-12-10 15:12:16.000000000 +0200
+@@ -37,6 +37,7 @@
+ #include "aj_config.h"
+ #include "aj_creds.h"
+ #include "aj_peer.h"
++#include <stdlib.h>
+ 
+ #if !(defined(ARDUINO) || defined(__linux) || defined(_WIN32))
+ #include "aj_wifi_ctrl.h"
+diff -ru upstream/aj_crypto_ecc.c patched/aj_crypto_ecc.c
+--- upstream/aj_crypto_ecc.c  2014-12-10 15:11:47.000000000 +0200
++++ patched/aj_crypto_ecc.c 2014-12-10 15:12:16.000000000 +0200
+@@ -20,7 +20,7 @@
+  *    OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+  ******************************************************************************/
+ 
+-#include <aj_crypto.h>
++#include "aj_crypto.h"
+ #include "aj_crypto_ecc.h"
+ #include "aj_crypto_sha2.h"
+ 
+diff -ru upstream/aj_crypto_sha2.c patched/aj_crypto_sha2.c
+--- upstream/aj_crypto_sha2.c 2014-12-10 15:11:47.000000000 +0200
++++ patched/aj_crypto_sha2.c  2014-12-10 15:12:16.000000000 +0200
+@@ -20,7 +20,7 @@
+  *    OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+  ******************************************************************************/
+ 
+-#include <aj_crypto.h>
++#include "aj_crypto.h"
+ 
+ #include "aj_crypto_sha2.h"
+ #include "aj_util.h"
+diff -ru upstream/aj_link_timeout.c patched/aj_link_timeout.c
+--- upstream/aj_link_timeout.c  2014-12-10 15:11:47.000000000 +0200
++++ patched/aj_link_timeout.c 2014-12-10 15:12:16.000000000 +0200
+@@ -23,7 +23,7 @@
+  */
+ #define AJ_MODULE LINK_TIMEOUT
+ 
+-#include <aj_link_timeout.h>
++#include "aj_link_timeout.h"
+ #include "aj_debug.h"
+ #include "aj_config.h"
+ /**
+diff -ru upstream/aj_link_timeout.h patched/aj_link_timeout.h
+--- upstream/aj_link_timeout.h  2014-12-10 15:11:47.000000000 +0200
++++ patched/aj_link_timeout.h 2014-12-10 15:12:16.000000000 +0200
+@@ -20,8 +20,8 @@
+  *    ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+  *    OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+  ******************************************************************************/
+-#include <aj_util.h>
+-#include <alljoyn.h>
++#include "aj_util.h"
++#include "alljoyn.h"
+ 
+ /**
+  * Enable link timeout for the connection between the application and the daemon bus. If there are
+diff -ru upstream/aj_msg_priv.h patched/aj_msg_priv.h
+--- upstream/aj_msg_priv.h  2014-12-10 15:11:47.000000000 +0200
++++ patched/aj_msg_priv.h 2014-12-10 15:12:16.000000000 +0200
+@@ -21,7 +21,7 @@
+  *    OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+  ******************************************************************************/
+ 
+-#include <alljoyn.h>
++#include "alljoyn.h"
+ 
+ 
+ /**
+ diff -ru upstream/aj_disco.c patched/aj_disco.c
+--- upstream/aj_disco.c  2015-01-12 14:40:27.000000000 -0800
++++ patched/aj_disco.c 2015-01-12 14:00:17.000000000 -0800
+@@ -23,6 +23,7 @@
+  */
+ #define AJ_MODULE DISCO
+ 
++#include <stdlib.h>
+ #include "aj_target.h"
+ #include "aj_status.h"
+ #include "aj_util.h"
