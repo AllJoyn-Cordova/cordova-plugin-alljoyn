@@ -1,9 +1,21 @@
 cordova-plugin-alljoyn
 ======================
 
-Cordova plugin for [AllJoyn](https://allseenalliance.org/alljoyn-framework-tutorial).
+A Cordova plugin to expose the [AllJoyn](https://allseenalliance.org/alljoyn-framework-tutorial) Thin Client (AJTCL 14.12) to cross platform applications written in Javascript. 
 
-Implementation Notes
+Purpose
+--------------------
+To provide a plugin which allows using the AllJoyn Thin Client library across all mobile platforms without requiring the user to deal with implementing and compiling the native code for each operating system.
+
+Current Platforms:
+* iOS
+* Windows Modern App
+* Windows Phone
+* Android (in-progress)
+
+An effort has been made to expose as many of the AJTCL features to Javascript as possible, while maintaining a clean Javascript API.  Features are prioritized based on which scenarios they unblock.  
+
+For Plugin Developers / Contributors
 --------------------
 After cloning this repository, a plugin developer needs to get ajtcl by running these commands in the project root folder:
 
@@ -14,14 +26,8 @@ $ git -C src/ajtcl checkout RB14.12
 
 For plugin users, above is taken care of by a hook run after plugin is added with Cordova scripts.
 
-Here are my current implementation plans:
-
-* Integrating with AllJoyn Core SDK 14.06.00a THIN CLIENT LIBRARY (AJTCL)
-* Add Windows native support (x64) by building WinRT component port of the necessary libraries, these can be based on the AJTCL Win32 targets for net and crypto.
-* Windows build requires Windows SDK 8.0 and Windows Phone build Windows Phone SDK 8.1
-
-Using the plugin for Windows platform:
-
+Using the plugin for Windows platforms
+--------------------------------------
 ```
 $ cd /path/to/your/cordova/app
 $ cordova add [/path/to/plugin or <url to this git repo>]
