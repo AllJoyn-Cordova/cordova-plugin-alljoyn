@@ -9,7 +9,7 @@ module.exports = function (context) {
   var deferral = new Q.defer();
 
   var ajtclDirectory = path.join('plugins', 'org.allseen.alljoyn', 'src', 'ajtcl');
-  var ajtclUpstream = 'https://github.com/stefangordon/ajtcl.git';
+  var ajtclUpstream = 'https://github.com/AllJoyn-Cordova/ajtcl.git';
   var ajtclBranch = 'RB14.12';
 
   if (fs.existsSync(ajtclDirectory)) {
