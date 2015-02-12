@@ -16,7 +16,7 @@ module.exports = function(context) {
   var sourcePath = path.join(platformPath, projectName, 'Plugins', 'org.allseen.alljoyn');
 
   var patchFile = path.join(path.dirname(context.scriptLocation), 'ajtcl-ios.patch');
-  var patchCommand = 'patch -d ' + sourcePath + ' -p1 < ' + patchFile;
+  var patchCommand = 'patch -d "' + sourcePath + '" -p1 < ' + patchFile;
 
   exec(patchCommand, function (error, stdout, stderr) {
       console.log(stdout);
