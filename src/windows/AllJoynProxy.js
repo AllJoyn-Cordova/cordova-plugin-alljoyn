@@ -323,6 +323,16 @@ cordova.commandProxy.add("AllJoyn", {
       }
     );
   },
+  replyAcceptSession: function(success, error, parameters) {
+    var messagePointer = parameters[0];
+    var response = parameters[1];
+
+    if (response === true) {
+      AllJoynWinRTComponent.AllJoyn.aj_BusReplyAcceptSession(messagePointer, 1);
+    } else {
+       AllJoynWinRTComponent.AllJoyn.aj_BusReplyAcceptSession(messagePointer, 0);
+    }
+  },
   setAcceptSessionListener: function(success, error, parameters) {
     var acceptSessionListener = parameters[0];
 
@@ -330,21 +340,7 @@ cordova.commandProxy.add("AllJoyn", {
     messageHandler.addHandler(
       acceptSessionId, 'qus',
       function(messageObject, messageBody, messagePointer, doneCallback) {
-        var responseCallback = function(response) {
-          if (response === true) {
-            AllJoynWinRTComponent.AllJoyn.aj_BusReplyAcceptSession(messagePointer, 1);
-          } else {
-            AllJoynWinRTComponent.AllJoyn.aj_BusReplyAcceptSession(messagePointer, 0);
-          }
-          doneCallback();
-        }
-        var joinSessionRequest = {
-          port: messageBody[0],
-          sessionId: messageBody[1],
-          sender: messageBody[2],
-          response: responseCallback
-        }
-        acceptSessionListener(joinSessionRequest);
+        acceptSessionListener(messageBody, messagePointer, doneCallback);
       }
     );
   },
