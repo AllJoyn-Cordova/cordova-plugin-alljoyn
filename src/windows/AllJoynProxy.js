@@ -430,34 +430,34 @@ var messageHandler = (function() {
             for (var i = 0; i < callbacks.length; i++) {
               var signature = callbacks[i][0];
               var response = null;
-              if (signature) {
-                // Unmarshal the message body
-                var messageBody = AllJoynWinRTComponent.AllJoyn.aj_UnmarshalArgs(aj_message, signature);
-                // First item in the list is the status of the unmarshaling
-                if (messageBody[0] == AllJoynWinRTComponent.AJ_Status.aj_OK) {
-                  // The messageBody is an object array created in the Windows Runtime Component
+              // Unmarshal the message arguments
+              AllJoynWinRTComponent.AllJoyn.aj_UnmarshalArgsWithDelegate(aj_message, signature, function(unmarshalArgsStatus, messageArgs) {
+                if (unmarshalArgsStatus == AllJoynWinRTComponent.AJ_Status.aj_OK) {
+                  console.log('Unmarshaling of arguments from message with id ' + receivedMessageId + ' succeeded');
+                  // The messageArgs is an object array created in the Windows Runtime Component
                   // so turn that to a JavaScript array before returning it.
                   var response = [];
-                  for (var j = 1; j < messageBody.length; j++) {
-                    response.push(messageBody[j]);
+                  for (var j = 0; j < messageArgs.length; j++) {
+                    response.push(messageArgs[j]);
                   }
                 } else {
-                  console.log('Unmarshaling of message with id ' + receivedMessageId + ' failed with status ' + messageBody[0]);
+                  console.log('Unmarshaling of arguments from message with id ' + receivedMessageId + ' failed with status ' + unmarshalArgsStatus);
                 }
-              }
-              if (receivedMessageId == METHOD_ACCEPT_SESSION_ID) {
-                callbacks[i][1](messageObject, response, aj_message, function() {
-                  // When request handled, close message and continue with the handler loop
+
+                if (receivedMessageId == METHOD_ACCEPT_SESSION_ID) {
+                  callbacks[i][1](messageObject, response, aj_message, function() {
+                    // When request handled, close message and continue with the handler loop
+                    AllJoynWinRTComponent.AllJoyn.aj_CloseMsg(aj_message);
+                    messageHandler.start(busAttachment);
+                  });
+                  // Stop the message loop until accept session request is handled
+                  messageHandler.stop();
+                  return;
+                } else {
+                  callbacks[i][1](messageObject, response);
                   AllJoynWinRTComponent.AllJoyn.aj_CloseMsg(aj_message);
-                  messageHandler.start(busAttachment);
-                });
-                // Stop the message loop until accept session request is handled
-                messageHandler.stop();
-                return;
-              } else {
-                callbacks[i][1](messageObject, response);
-                AllJoynWinRTComponent.AllJoyn.aj_CloseMsg(aj_message);
-              }
+                }
+              });
             }
           } else {
             console.log('Message with id ' + receivedMessageId + ' passed to default handler');
