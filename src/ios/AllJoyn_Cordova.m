@@ -1,4 +1,4 @@
-#define AJ_MODULE BASIC_CLIENT
+#define AJ_MODULE ALLJOYN_CORDOVA
 
 #import "AllJoyn_Cordova.h"
 #include <stdio.h>
@@ -22,7 +22,7 @@ typedef struct {
 #define MSG_TIMEOUT 1000 /* 1 sec */
 #define METHOD_CALL_TIMEOUT 1000 /* 1 sec */
 
-uint8_t dbgBASIC_CLIENT = 1;
+uint8_t dbgALLJOYN_CORDOVA = 1;
 
 @interface AllJoyn_Cordova  ()
 // Dictionary of handlers keyed off of message id
@@ -40,7 +40,7 @@ uint8_t dbgBASIC_CLIENT = 1;
 // This usually means we need to stop processing messages on the loop until it is done
 @property Boolean callbackInProgress;
 
-@property AJ_Message* callbackMessage;
+@property AJ_Message* callbackMessagePtr;
 
 // Property to hold dynamically registered object lists
 @property AJ_Object* proxyObjects;
@@ -61,7 +61,7 @@ uint8_t dbgBASIC_CLIENT = 1;
     _proxyObjects = NULL;
     _appObjects = NULL;
     _callbackInProgress = false;
-    _callbackMessage = NULL;
+    _callbackMessagePtr = NULL;
 
     _busAttachment = malloc(sizeof(AJ_BusAttachment));
     memset(_busAttachment, 0, sizeof(AJ_BusAttachment));
@@ -211,19 +211,6 @@ uint8_t dbgBASIC_CLIENT = 1;
                                         if(status != AJ_OK) {
                                             printf("Failure initializing about %s\n", AJ_StatusText(status));
                                         }
-                                        uint32_t acceptSessionId = AJ_METHOD_ACCEPT_SESSION;
-                                        NSNumber* acceptSessionKey = [NSNumber numberWithUnsignedInt:acceptSessionId];
-                                        MsgHandler acceptSessionHandler = ^bool(AJ_Message* pMsg) {
-                                            AJ_Status status = AJ_BusReplyAcceptSession(pMsg, 1);
-                                            if(status != AJ_OK) {
-                                                printf("Failure accepting session %s", AJ_StatusText(status));
-                                            }
-
-                                            return true;
-                                        };
-
-                                        [[self MessageHandlers] setObject:acceptSessionHandler forKey:acceptSessionKey];
-
 
                                         [self sendSuccessMessage:@"startAdvertisingName: Success" toCallback:[command callbackId] withKeepCallback:false];
                                     }
@@ -444,9 +431,57 @@ uint8_t dbgBASIC_CLIENT = 1;
     }];
 }
 
--(void)setAcceptSessionListener:(CDVCommandStatus*)command {
+-(void)replyAcceptSession:(CDVInvokedUrlCommand*)command {
     [self.commandDelegate runInBackground:^{
-        //TODO: Add implementation
+        NSNumber* msgId = [command argumentAtIndex:0 withDefault:nil andClass:[NSNumber class]];
+        //TODO: What type does boolean come through as?
+        NSNumber* response = [command argumentAtIndex:1];
+
+        if(msgId == nil || ![msgId isKindOfClass:[NSNumber class]]) {
+            [self sendErrorMessage:@"replyAcceptSession: Invalid argument" toCallback:[command callbackId] withKeepCallback:false];
+        } else {
+            // Make sure msgId matches current callback
+            if((void*)[msgId unsignedLongLongValue] == (void*)[self callbackMessagePtr]) {
+                // Accept or reject session
+                AJ_Status status = AJ_BusReplyAcceptSession(&_msg, [response unsignedIntValue]);
+                if(status != AJ_OK) {
+                    [self sendErrorStatus:status toCallback:[command callbackId] withKeepCallback:false];
+                } else {
+                    [self sendSuccessMessage:@"replyAcceptSession: Success" toCallback:[command callbackId] withKeepCallback:false];
+                    AJ_CloseMsg(&_msg);
+                }
+                // Unblock msg queue
+                [self setCallbackMessagePtr:NULL];
+                [self setCallbackInProgress:false];
+            } else {
+                printf("Mismatch, or i failed to compare");
+            }
+        }
+    }];
+}
+
+-(void)setAcceptSessionListener:(CDVInvokedUrlCommand*)command {
+    [self.commandDelegate runInBackground:^{
+        uint32_t acceptSessionId = AJ_METHOD_ACCEPT_SESSION;
+        NSNumber* acceptSessionKey = [NSNumber numberWithUnsignedInt:acceptSessionId];
+        MsgHandler acceptSessionHandler = ^bool(AJ_Message* pMsg) {
+
+            // Save the msg and stop the msg oop
+            [self setCallbackMessagePtr:pMsg];
+            [self setCallbackInProgress:true];
+            NSMutableArray* msgArguments = [NSMutableArray new];
+            [self unmarshalArgumentsFor:pMsg withSignature:@"qus" toValues:msgArguments];
+
+            NSMutableArray* callbackArguments = [NSMutableArray new];
+            [callbackArguments insertObject:msgArguments atIndex:0];
+            [callbackArguments insertObject:[NSNumber numberWithUnsignedLongLong:((unsigned long long)pMsg)] atIndex:1];
+
+            [self sendSuccessMultipart:callbackArguments toCallback:[command callbackId] withKeepCallback:true];
+
+            return true;
+        };
+
+        [[self MessageHandlers] setObject:acceptSessionHandler forKey:acceptSessionKey];
     }];
 }
 
@@ -744,74 +779,92 @@ uint8_t dbgBASIC_CLIENT = 1;
         switch(currentType) {
             case AJ_ARG_BOOLEAN:
                 marshalStatus.status = AJ_UnmarshalArg(pMsg, &arg);
-                if(arg.val.v_bool) {
-                    [values addObject:[NSNumber numberWithUnsignedInt:*(arg.val.v_bool)]];
-                } else {
-                    marshalStatus.status = AJ_ERR_MARSHAL;
+                if(marshalStatus.status == AJ_OK) {
+                    if(arg.val.v_bool) {
+                        [values addObject:[NSNumber numberWithUnsignedInt:*(arg.val.v_bool)]];
+                    } else {
+                        marshalStatus.status = AJ_ERR_MARSHAL;
+                    }
                 }
                 break;
             case AJ_ARG_INT16:
                 marshalStatus.status = AJ_UnmarshalArg(pMsg, &arg);
-                if(arg.val.v_int16) {
-                    [values addObject:[NSNumber numberWithShort:*(arg.val.v_int16)]];
-                } else {
-                    marshalStatus.status = AJ_ERR_MARSHAL;
+                if(marshalStatus.status == AJ_OK) {
+                    if(arg.val.v_int16) {
+                        [values addObject:[NSNumber numberWithShort:*(arg.val.v_int16)]];
+                    } else {
+                        marshalStatus.status = AJ_ERR_MARSHAL;
+                    }
                 }
                 break;
             case AJ_ARG_INT32:
                 marshalStatus.status = AJ_UnmarshalArg(pMsg, &arg);
-                if(arg.val.v_int32) {
-                    [values addObject:[NSNumber numberWithInt:*(arg.val.v_int32)]];
-                } else {
-                    marshalStatus.status = AJ_ERR_MARSHAL;
+                if(marshalStatus.status == AJ_OK) {
+                    if(arg.val.v_int32) {
+                        [values addObject:[NSNumber numberWithInt:*(arg.val.v_int32)]];
+                    } else {
+                        marshalStatus.status = AJ_ERR_MARSHAL;
+                    }
                 }
                 break;
             case AJ_ARG_INT64:
                 marshalStatus.status = AJ_UnmarshalArg(pMsg, &arg);
-                if(arg.val.v_int64) {
-                    [values addObject:[NSNumber numberWithLongLong:*(arg.val.v_int64)]];
-                } else {
-                    marshalStatus.status = AJ_ERR_MARSHAL;
+                if(marshalStatus.status == AJ_OK) {
+                    if(arg.val.v_int64) {
+                        [values addObject:[NSNumber numberWithLongLong:*(arg.val.v_int64)]];
+                    } else {
+                        marshalStatus.status = AJ_ERR_MARSHAL;
+                    }
                 }
                 break;
             case AJ_ARG_UINT16:
                 marshalStatus.status = AJ_UnmarshalArg(pMsg, &arg);
-                if(arg.val.v_uint16) {
-                    [values addObject:[NSNumber numberWithUnsignedShort:*(arg.val.v_uint16)]];
-                } else {
-                    marshalStatus.status = AJ_ERR_MARSHAL;
+                if(marshalStatus.status == AJ_OK) {
+                    if(arg.val.v_uint16) {
+                        [values addObject:[NSNumber numberWithUnsignedShort:*(arg.val.v_uint16)]];
+                    } else {
+                        marshalStatus.status = AJ_ERR_MARSHAL;
+                    }
                 }
                 break;
             case AJ_ARG_UINT32:
                 marshalStatus.status = AJ_UnmarshalArg(pMsg, &arg);
-                if(arg.val.v_uint32) {
-                    [values addObject:[NSNumber numberWithUnsignedInt:*(arg.val.v_uint32)]];
-                } else {
-                    marshalStatus.status = AJ_ERR_MARSHAL;
+                if(marshalStatus.status == AJ_OK) {
+                    if(arg.val.v_uint32) {
+                        [values addObject:[NSNumber numberWithUnsignedInt:*(arg.val.v_uint32)]];
+                    } else {
+                        marshalStatus.status = AJ_ERR_MARSHAL;
+                    }
                 }
                 break;
             case AJ_ARG_UINT64:
                 marshalStatus.status = AJ_UnmarshalArg(pMsg, &arg);
-                if(arg.val.v_uint64) {
-                    [values addObject:[NSNumber numberWithUnsignedLongLong:*(arg.val.v_uint64)]];
-                } else {
-                    marshalStatus.status = AJ_ERR_MARSHAL;
+                if(marshalStatus.status == AJ_OK) {
+                    if(arg.val.v_uint64) {
+                        [values addObject:[NSNumber numberWithUnsignedLongLong:*(arg.val.v_uint64)]];
+                    } else {
+                        marshalStatus.status = AJ_ERR_MARSHAL;
+                    }
                 }
                 break;
             case AJ_ARG_DOUBLE:
                 marshalStatus.status = AJ_UnmarshalArg(pMsg, &arg);
-                if(arg.val.v_double) {
-                    [values addObject:[NSNumber numberWithDouble:*(arg.val.v_double)]];
-                } else {
-                    marshalStatus.status = AJ_ERR_MARSHAL;
+                if(marshalStatus.status == AJ_OK) {
+                    if(arg.val.v_double) {
+                        [values addObject:[NSNumber numberWithDouble:*(arg.val.v_double)]];
+                    } else {
+                        marshalStatus.status = AJ_ERR_MARSHAL;
+                    }
                 }
                 break;
             case AJ_ARG_BYTE:
                 marshalStatus.status = AJ_UnmarshalArg(pMsg, &arg);
-                if(arg.val.v_byte) {
-                    [values addObject:[NSNumber numberWithChar:*(arg.val.v_byte)]];
-                } else {
-                    marshalStatus.status = AJ_ERR_MARSHAL;
+                if(marshalStatus.status == AJ_OK) {
+                    if(arg.val.v_byte) {
+                        [values addObject:[NSNumber numberWithChar:*(arg.val.v_byte)]];
+                    } else {
+                        marshalStatus.status = AJ_ERR_MARSHAL;
+                    }
                 }
                 break;
 
@@ -1273,6 +1326,13 @@ dispatch_source_t CreateDispatchTimer(uint64_t interval,
     [self sendSuccessMessage:@"Disconnected" toCallback:[command callbackId] withKeepCallback:false];
 }
 
+-(void) sendSuccessMultipart:(NSArray*)array toCallback:(NSString*)callbackId withKeepCallback:(Boolean) keepCallback {
+    CDVPluginResult* pluginResult = nil;
+    pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsMultipart:array];
+    [pluginResult setKeepCallbackAsBool:keepCallback];
+    [self.commandDelegate sendPluginResult:pluginResult callbackId:callbackId];
+}
+
 -(void) sendSuccessArray:(NSArray*)array toCallback:(NSString*)callbackId withKeepCallback:(Boolean)keepCallback {
     CDVPluginResult* pluginResult = nil;
     pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsArray:array];
@@ -1389,76 +1449,63 @@ Fail:
     return status;
 }
 
+AJ_Message _msg;
+
 -(void)msgLoop
 {
-    AJ_InfoPrintf((" --- MSG LOOP ---\n"));
-    AJ_InfoPrintf((" MsgHandlerCount: %lu\n", (unsigned long)[[self MessageHandlers] count]));
+    // AJ_InfoPrintf((" --- MSG LOOP ---\n"));
+    // AJ_InfoPrintf((" MsgHandlerCount: %lu\n", (unsigned long)[[self MessageHandlers] count]));
     if(![self connectedToBus]) {
         return;
     }
 
     AJ_Status status = AJ_OK;
-    AJ_Message msg;
-    // get next message
-    status = AJ_UnmarshalMsg([self busAttachment], &msg, MSG_TIMEOUT);
+    if(![self callbackInProgress]) {
+        // get next message
+        status = AJ_UnmarshalMsg([self busAttachment], &_msg, MSG_TIMEOUT);
 
-    // Check for errors we can ignore
-    if(status == AJ_ERR_TIMEOUT) {
-        // Nothing to do for now, continue i guess
-        AJ_InfoPrintf(("Timeout getting MSG. Will try again...\n"));
-        status = AJ_OK;
-    } else if (status == AJ_ERR_NO_MATCH) {
-        AJ_InfoPrintf(("AJ_ERR_NO_MATCH in main loop. Ignoring!\n"));
-        // Ignore unknown messages
-        status = AJ_OK;
-    } else if (status != AJ_OK) {
-        AJ_ErrPrintf((" -- MainLoopError AJ_UnmarshalMsg returned status=%s\n", AJ_StatusText(status)));
-    } else {
-        AJ_InfoPrintf((" Executing handlers if any ... \n"));
-        // If somebody has requested a handler for a specific msg
-        NSNumber* msgIdAsNumber = [NSNumber numberWithUnsignedInt:msg.msgId];
-        MsgHandler handler = [self MessageHandlers][msgIdAsNumber];
-        bool handled = false;
-        if (handler != nil && handler != NULL) {
-            handled = handler(&msg);
-        }
-        if(!handled) {
-            AJ_InfoPrintf((" Done Executing handlers if any ... \n"));
-            switch (msg.msgId) {
-                    //
-                    // Method reples
-                    //
-                case AJ_SIGNAL_SESSION_LOST_WITH_REASON:
-                    /*
-                     * Force a disconnect
-                     */
-                {
-                    uint32_t id, reason;
-                    AJ_UnmarshalArgs(&msg, "uu", &id, &reason);
-                    AJ_InfoPrintf(("Session lost. ID = %u, reason = %u", id, reason));
-                    //                    [self sendSuccessMessage:@"lost session :("];
-                    
-                    AJ_ErrPrintf((" -- (): AJ_SIGNAL_SESSION_LOST_WITH_REASON: AJ_ERR_READ\n"));
+        // Check for errors we can ignore
+        if(status == AJ_ERR_TIMEOUT) {
+            // Nothing to do for now, continue i guess
+            AJ_InfoPrintf(("Timeout getting MSG. Will try again...\n"));
+            status = AJ_OK;
+        } else if (status == AJ_ERR_NO_MATCH) {
+            AJ_InfoPrintf(("AJ_ERR_NO_MATCH in main loop. Ignoring!\n"));
+            // Ignore unknown messages
+            status = AJ_OK;
+        } else if (status != AJ_OK) {
+            AJ_ErrPrintf((" -- MainLoopError AJ_UnmarshalMsg returned status=%s\n", AJ_StatusText(status)));
+        } else {
+            AJ_InfoPrintf((" Executing handlers if any ... \n"));
+            // If somebody has requested a handler for a specific msg
+            NSNumber* msgIdAsNumber = [NSNumber numberWithUnsignedInt:_msg.msgId];
+            MsgHandler handler = [self MessageHandlers][msgIdAsNumber];
+            bool handled = false;
+            if (handler != nil && handler != NULL) {
+                handled = handler(&_msg);
+            }
+            if(!handled) {
+                AJ_InfoPrintf((" Done Executing handlers if any ... \n"));
+                switch (_msg.msgId) {
+                    default:
+                        printf("Dunno msg %u\n", _msg.msgId);
+                        const char* member = NULL;
+                        AJ_GetMemberType(_msg.msgId, &member, NULL);
+                        printf("Member: %s\n", member);
+                        /*
+                         * Pass to the built-in bus message handlers
+                         */
+                        AJ_InfoPrintf((" -- (): AJ_BusHandleBusMessage()\n"));
+                        status = AJ_BusHandleBusMessage(&_msg);
+                        break;
                 }
-                    //                    status = AJ_ERR_READ;
-                    break;
-                    
-                default:
-                    printf("Dunno msg %u\n", msg.msgId);
-                    const char* member = NULL;
-                    AJ_GetMemberType(msg.msgId, &member, NULL);
-                    printf("Member: %s\n", member);
-                    /*
-                     * Pass to the built-in bus message handlers
-                     */
-                    AJ_InfoPrintf((" -- (): AJ_BusHandleBusMessage()\n"));
-                    status = AJ_BusHandleBusMessage(&msg);
-                    break;
+            }
+            if(![self callbackInProgress]) {
+                AJ_CloseMsg(&_msg);
             }
         }
-        AJ_CloseMsg(&msg);
     }
-
+    
     if(status != AJ_OK) {
         printf("ERROR: Main loop had a non-succesful iteration. Exit status: %d 0x%x %s", status, status, AJ_StatusText(status));
         //        [self sendErrorMessage:[NSString stringWithFormat:@"Error encountered: %d 0x%x %s", status, status, AJ_StatusText(status)]];

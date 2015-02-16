@@ -98,7 +98,21 @@ var AllJoyn = {
         }
       };
 
-      var acceptSessionListener = function(joinSessionRequest) {
+      var acceptSessionListener = function(messageBody, messagePointer, doneCallback) {
+        var getClass = {}.toString;
+        var responseCallback = function(response) {
+          exec(function() {}, function() {}, "AllJoyn", "replyAcceptSession", [messagePointer, response]);
+          if(doneCallback && getClass.call(doneCallback) == '[object Function]') {
+            doneCallback();
+          }
+        };
+
+        var joinSessionRequest = {
+          port: messageBody[0],
+          sessionId: messageBody[1],
+          sender: messageBody[2],
+          response: responseCallback,
+        };
         bus.acceptSessionListener(joinSessionRequest);
       };
       exec(acceptSessionListener, function() {}, "AllJoyn", "setAcceptSessionListener", [acceptSessionListener]);
