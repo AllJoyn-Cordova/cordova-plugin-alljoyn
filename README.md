@@ -53,3 +53,8 @@ Caveats
   * https://issues.apache.org/jira/browse/CB-7911
   * https://issues.apache.org/jira/browse/CB-8123
     * This one is still under development so it should be considered as a moving target
+
+Resources
+---------
+Various explanatory blog posts can be found here:
+http://www.stefangordon.com/introducing-the-alljoyn-plugin-for-cordova/
