@@ -906,7 +906,7 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
                     }
                 }
                 break;
-
+            case AJ_ARG_OBJ_PATH:
             case AJ_ARG_STRING: {
                 marshalStatus.status = AJ_UnmarshalArg(pMsg, &arg);
                 if(marshalStatus.status == AJ_OK) {
@@ -956,19 +956,15 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
             }
             case AJ_ARG_ARRAY: {
                 marshalStatus.status = AJ_UnmarshalContainer(pMsg, &arg, AJ_ARG_ARRAY);
-
-                unsigned int maximumArgumentLength = 0;
+                NSString* arrayTypeSignature = [self getNextToken:[signature substringFromIndex:i+1]];
                 NSMutableArray* arrayValues = [NSMutableArray new];
                 if(marshalStatus.status == AJ_OK) {
                     while(marshalStatus.status == AJ_OK) {
-                        marshalStatus = [self unmarshalArgumentFor:pMsg withSignature:[signature substringFromIndex:i+1] toValues:arrayValues];
-                        if(marshalStatus.nextArgumentIndex > maximumArgumentLength) {
-                            maximumArgumentLength = marshalStatus.nextArgumentIndex;
-                        }
+                        marshalStatus = [self unmarshalArgumentFor:pMsg withSignature:arrayTypeSignature toValues:arrayValues];
                     }
                 }
-                if(marshalStatus.status == AJ_ERR_NO_MORE) {
-                    i += maximumArgumentLength;
+                if(marshalStatus.status == AJ_ERR_NO_MORE || marshalStatus.status == AJ_OK) {
+                    i += arrayTypeSignature.length;
                     [values addObject:arrayValues];
                     marshalStatus.status = AJ_UnmarshalCloseContainer(pMsg, &arg);
 

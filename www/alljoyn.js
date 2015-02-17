@@ -54,7 +54,58 @@ var AllJoyn = {
           exec(listener, function() {}, "AllJoyn", "addAdvertisedNameListener", [name, listener]);
         },
         addInterfacesListener: function(interfaceNames, listener) {
-          exec(listener, function() {}, "AllJoyn", "addInterfacesListener", [interfaceNames, listener]);
+          var aboutAnnouncementRule = "interface='org.alljoyn.About',sessionless='t'";
+          if (interfaceNames) {
+            if (interfaceNames.constructor !== Array) {
+              interfaceNames = [interfaceNames];
+            }
+            interfaceNames.forEach(function(currentValue, index, array) {
+              aboutAnnouncementRule += ",implements='" + currentValue + "'";
+            });
+          }
+
+          console.log('aboutAnnouncementRule: ' + aboutAnnouncementRule);
+          var onAboutAnnouncementReceived = function(messageBody) {
+            var aboutAnnouncement = {};
+            console.log('onAboutAnnouncementReceived: ' + JSON.stringify(arguments));
+            if (messageBody) {
+              if (messageBody[0]) {
+                aboutAnnouncement.version = messageBody[0];
+              }
+              if (messageBody[1]) {
+                aboutAnnouncement.port = messageBody[1];
+              }
+              if (messageBody[2] && messageBody[2].constructor === Array) {
+                aboutAnnouncement.objects = [];
+                messageBody[2].forEach(function(objectDescription) {
+                  if (objectDescription.constructor === Array) {
+                    var object = {};
+                    object.path = objectDescription[0];
+                    object.interfaces = objectDescription[1];
+                    aboutAnnouncement.objects.push(object);
+                  }
+                });
+              }
+              if (messageBody[3] && messageBody[3].constructor === Array) {
+                messageBody[3].forEach(function(objectProperty) {
+                  if (objectProperty.constructor === Array) {
+                    aboutAnnouncement[objectProperty[0]] = objectProperty[1];
+                  }
+                });
+              }
+            }
+
+            console.log('AboutAnnouncement: ' + JSON.stringify(aboutAnnouncement));
+            listener(aboutAnnouncement);
+
+          };
+          var onAddAboutAnnouncementRuleSuccess = function() {
+            var aboutAnnouncementIndexList = [0, 5, 1, 3]; // AJ_SIGNAL_ABOUT_ANNOUNCE
+            bus.addListener(aboutAnnouncementIndexList, 'qqa(oas)a{sv}', onAboutAnnouncementReceived);
+          };
+          exec(onAddAboutAnnouncementRuleSuccess, function() {}, "AllJoyn", "setSignalRule", [aboutAnnouncementRule, 0]);
+
+          // exec(listener, function() {}, "AllJoyn", "addInterfacesListener", [interfaceNames, listener]);
         },
         startAdvertisingName: function(success, error, name, port) {
           exec(success, error, "AllJoyn", "startAdvertisingName", [name, port]);
@@ -102,7 +153,7 @@ var AllJoyn = {
         var getClass = {}.toString;
         var responseCallback = function(response) {
           exec(function() {}, function() {}, "AllJoyn", "replyAcceptSession", [messagePointer, response]);
-          if(doneCallback && getClass.call(doneCallback) == '[object Function]') {
+          if (doneCallback && getClass.call(doneCallback) == '[object Function]') {
             doneCallback();
           }
         };
