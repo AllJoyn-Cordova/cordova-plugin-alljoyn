@@ -46,7 +46,7 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
 @property AJ_Object* proxyObjects;
 @property AJ_Object* appObjects;
 
-@property AJ_BusAttachment* busAttachment;;
+@property AJ_BusAttachment* busAttachment;
 @end
 
 @implementation AllJoyn_Cordova
@@ -415,6 +415,9 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
             NSNumber* methodKey = [NSNumber numberWithUnsignedInt:AJ_SIGNAL_ABOUT_ANNOUNCE];
             MsgHandler messageHandler = ^bool(AJ_Message* pMsg) {
                 uint16_t aboutVersion, aboutPort;
+                AJ_Status status = AJ_OK;
+                AJ_AboutObjectDescription objDescs[AJ_MAX_NUM_OF_OBJ_DESC];
+                uint16_t objDescsCount = 0;
                 AJ_UnmarshalArgs(pMsg, "qq", &aboutVersion, &aboutPort);
                 AJ_InfoPrintf((" -- AboutVersion: %d, AboutPort: %d\n", aboutVersion, aboutPort));
                 //TODO: Get more about info and convert to proper callback
@@ -422,6 +425,42 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
                 [responseDictionary setObject:[NSNumber numberWithUnsignedInt:aboutVersion] forKey:@"version"];
                 [responseDictionary setObject:[NSNumber numberWithUnsignedInt:aboutPort] forKey:@"port"];
                 [responseDictionary setObject:[NSString stringWithUTF8String:pMsg->sender] forKey:@"name"];
+
+
+
+                /**
+                 * Unmarshal the object description section i.e. the objects with their paths and published interface names
+                 */
+                status = AJ_AboutUnmarshalObjectDescriptions(pMsg, objDescs, &objDescsCount);
+                if(status == AJ_OK) {
+                    NSMutableArray* objects = [NSMutableArray new];
+                    for(uint32_t i = 0;i<objDescsCount;i++) {
+                        NSMutableDictionary* objectDescriptions = [NSMutableDictionary new];
+                        [objectDescriptions setObject:[NSString stringWithUTF8String:objDescs[i].path] forKey:@"path"];
+                        NSMutableArray* interfaces = [NSMutableArray new];
+                        for(uint32_t j = 0;j<objDescs[i].interfacesCount;j++) {
+                            [interfaces addObject:[NSString stringWithUTF8String:objDescs[i].interfaces[j]]];
+                        }
+                        [objectDescriptions setObject:interfaces forKey:@"interfaces"];
+                        [objects addObject:objectDescriptions];
+                    }
+                    [responseDictionary setObject:objects forKey:@"objects"];
+
+                    NSMutableArray* aboutProperties = [NSMutableArray new];
+                    status = [self unmarshalArgumentFor:pMsg withSignature:@"a{sv}" toValues:aboutProperties].status;
+                    if(status == AJ_OK) {
+                        if(aboutProperties.count > 0) {
+                            NSArray* unpackedProperties = aboutProperties[0];
+                            for (NSArray* propertyPair in unpackedProperties) {
+                                if(propertyPair.count > 1) {
+                                    // First value is the key/name of property
+                                    // Second value is the value of the property
+                                    [responseDictionary setObject:propertyPair[1] forKey:propertyPair[0]];
+                                }
+                            }
+                        }
+                    }
+                }
                 [self sendSuccessDictionary:responseDictionary toCallback:[command callbackId] withKeepCallback:true];
                 return true;
             };
