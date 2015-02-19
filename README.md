@@ -1,4 +1,4 @@
-cordova-plugin-alljoyn
+cordova-plugin-alljoyn [![Build Status](https://travis-ci.org/AllJoyn-Cordova/cordova-plugin-alljoyn.svg?branch=master)](https://travis-ci.org/AllJoyn-Cordova/cordova-plugin-alljoyn)
 ======================
 
 A Cordova plugin to expose the [AllJoyn](https://allseenalliance.org/alljoyn-framework-tutorial) Thin Client (AJTCL 14.12) to cross platform applications written in Javascript. 
