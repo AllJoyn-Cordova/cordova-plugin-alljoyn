@@ -1,0 +1,8 @@
+language: objective-c
+node_js:
+  - "0.12"
+install:
+  - npm install cordova
+  - npm install ios-sim
+script:
+  - node -v
