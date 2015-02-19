@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
+    id="org.allseen.alljoyn.tests"
+    version="0.0.2">
+    <name>AllJoyn Tests</name>
+
+    <js-module src="tests.js" name="tests">
+    </js-module>
+</plugin>
