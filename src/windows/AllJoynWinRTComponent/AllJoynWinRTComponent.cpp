@@ -1213,7 +1213,11 @@ AllJoynWinRTComponent::AJ_Status AllJoynWinRTComponent::AllJoyn::AJ_UnmarshalClo
 						break;
 
 					case 8:
-						if (nextTypeId == 'x')
+						if (nextTypeId == 'd')
+						{
+							(*args).push_back(ref new Array<double>((double*)(ptr), lenInBytes >> 3));
+						}
+						else if (nextTypeId == 'x')
 						{
 							(*args).push_back(ref new Array<int64_t>((int64_t*)(ptr), lenInBytes >> 3));
 						}
@@ -1328,7 +1332,12 @@ AllJoynWinRTComponent::AJ_Status AllJoynWinRTComponent::AllJoyn::AJ_UnmarshalClo
 					break;
 
 				case 8:
-					if (typeId == 'x')
+					if (typeId == 'd')
+					{
+						double d = *((double*)(arg.val.v_uint64));
+						(*args).push_back(d);
+					}
+					else if (typeId == 'x')
 					{
 						(*args).push_back((int64_t)(*arg.val.v_uint64));
 					}
@@ -1523,10 +1532,23 @@ std::vector<Object^> AllJoynWinRTComponent::AllJoyn::GetArrayArgsAsString(String
 
 					case 8:
 						aval = (uint64_t*)malloc(len * sizeof(uint64_t));
-						for (int k = 0; k < len; k++)
+
+						if (nextTypeId == 'd')
 						{
-							*(((uint64_t*)aval) + k) = (uint64_t)(_strtoui64(vArgs[k], NULL, 10));
+							for (int k = 0; k < len; k++)
+							{
+								double d = atof(vArgs[k]);
+								*(((uint64_t*)aval) + k) = *((uint64_t*)&d);
+							}
 						}
+						else
+						{
+							for (int k = 0; k < len; k++)
+							{
+								*(((uint64_t*)aval) + k) = (uint64_t)(_strtoui64(vArgs[k], NULL, 10));
+							}
+						}
+
 						break;
 					}
 
@@ -1649,7 +1671,16 @@ std::vector<Object^> AllJoynWinRTComponent::AllJoyn::GetArrayArgsAsString(String
 					break;
 
 				case 8:
-					u64 = _wcstoui64(strVal->Data(), NULL, 10);
+					if (typeId == 'd')
+					{
+						double d = _wtof(strVal->Data());
+						u64 = *((uint64_t*)&d);
+					}
+					else
+					{
+						u64 = _wcstoui64(strVal->Data(), NULL, 10);
+					}
+
 					(*args).erase((*args).begin());
 					val = &u64;
 					break;
