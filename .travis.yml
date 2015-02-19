@@ -6,4 +6,5 @@ install:
   - npm install cordova-paramedic
 script:
   - export PATH=./node_modules/.bin:$PATH
-  - cordova-paramedic --platform ios --plugin ../cordova-plugin-alljoyn
+  - export PLUGIN_PATH=$(pwd)/cordova-plugin-alljoyn
+  - cordova-paramedic --platform ios --plugin $PLUGIN_PATH
