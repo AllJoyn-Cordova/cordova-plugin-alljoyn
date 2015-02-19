@@ -1,8 +1,8 @@
 language: objective-c
 install:
+  - cd ../
   - npm install cordova
   - npm install ios-sim
   - npm install cordova-paramedic
 script:
-  - node -v
-  - ./node_modules/.bin/cordova-paramedic
+  - ./node_modules/.bin/cordova-paramedic --platform ios --plugin ../cordova-plugin-alljoyn
