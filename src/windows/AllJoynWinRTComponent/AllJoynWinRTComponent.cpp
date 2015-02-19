@@ -1089,7 +1089,7 @@ AllJoynWinRTComponent::AJ_Status AllJoynWinRTComponent::AllJoyn::AJ_UnmarshalClo
 }
 
 
-::AJ_Status AllJoynWinRTComponent::AllJoyn::UnmarshalArgs(::AJ_Message* msg, const char** sig, std::vector<Object^>* args)
+::AJ_Status AllJoynWinRTComponent::AllJoyn::UnmarshalArgs(::AJ_Message* msg, const char** sig, Vector<Object^>^ args)
 {
 	::AJ_Arg structArg;
 	::AJ_Arg arg;
@@ -1169,7 +1169,7 @@ AllJoynWinRTComponent::AJ_Status AllJoynWinRTComponent::AllJoyn::AJ_UnmarshalClo
 						vals[k] = str;
 					}
 
-					(*args).push_back(vals);
+					args->Append(vals);
 					status = ::AJ_UnmarshalCloseContainer(msg, &arrayArg);
 				}
 				else
@@ -1187,43 +1187,43 @@ AllJoynWinRTComponent::AJ_Status AllJoynWinRTComponent::AllJoyn::AJ_UnmarshalClo
 					switch (SizeOfType(nextTypeId))
 					{
 					case 1:
-						(*args).push_back(ref new Array<uint8_t>((uint8_t*)(ptr), lenInBytes));
+						args->Append(ref new Array<uint8_t>((uint8_t*)(ptr), lenInBytes));
 						break;
 
 					case 2:
 						if (nextTypeId == 'n')
 						{
-							(*args).push_back(ref new Array<int16_t>((int16_t*)(ptr), lenInBytes >> 1));
+							args->Append(ref new Array<int16_t>((int16_t*)(ptr), lenInBytes >> 1));
 						}
 						else
 						{
-							(*args).push_back(ref new Array<uint16_t>((uint16_t*)(ptr), lenInBytes >> 1));
+							args->Append(ref new Array<uint16_t>((uint16_t*)(ptr), lenInBytes >> 1));
 						}
 						break;
 
 					case 4:
 						if (nextTypeId == 'i')
 						{
-							(*args).push_back(ref new Array<int32_t>((int32_t*)(ptr), lenInBytes >> 2));
+							args->Append(ref new Array<int32_t>((int32_t*)(ptr), lenInBytes >> 2));
 						}
 						else
 						{
-							(*args).push_back(ref new Array<uint32_t>((uint32_t*)(ptr), lenInBytes >> 2));
+							args->Append(ref new Array<uint32_t>((uint32_t*)(ptr), lenInBytes >> 2));
 						}
 						break;
 
 					case 8:
 						if (nextTypeId == 'd')
 						{
-							(*args).push_back(ref new Array<double>((double*)(ptr), lenInBytes >> 3));
+							args->Append(ref new Array<double>((double*)(ptr), lenInBytes >> 3));
 						}
 						else if (nextTypeId == 'x')
 						{
-							(*args).push_back(ref new Array<int64_t>((int64_t*)(ptr), lenInBytes >> 3));
+							args->Append(ref new Array<int64_t>((int64_t*)(ptr), lenInBytes >> 3));
 						}
 						else
 						{
-							(*args).push_back(ref new Array<uint64_t>((uint64_t*)(ptr), lenInBytes >> 3));
+							args->Append(ref new Array<uint64_t>((uint64_t*)(ptr), lenInBytes >> 3));
 						}
 						break;
 					}
@@ -1243,7 +1243,7 @@ AllJoynWinRTComponent::AJ_Status AllJoynWinRTComponent::AllJoyn::AJ_UnmarshalClo
 				const char* inSig;
 				status = AJ_UnmarshalVariant(msg, &inSig);
 				MBSTOPLS(inSig, inSigRT);
-				(*args).push_back(inSigRT);
+				args->Append(inSigRT);
 				status = UnmarshalArgs(msg, &inSig, args);
 
 				if (status != ::AJ_OK)
@@ -1262,14 +1262,24 @@ AllJoynWinRTComponent::AJ_Status AllJoynWinRTComponent::AllJoyn::AJ_UnmarshalClo
 				memcpy(subSig, *sig, strlen(*sig));
 				subSig[strchr(subSig, closeContainer) - subSig + 1] = '\0';
 				status = ::AJ_UnmarshalContainer(msg, &arrayArg, AJ_ARG_ARRAY);
+				Vector<Object^>^ vArgs = ref new Vector<Object^>();
 
 				do
 				{
 					const char* inSig = subSig;
-					status = UnmarshalArgs(msg, &inSig, args);
+					Vector<Object^>^ inArgs = ref new Vector<Object^>();
+					status = UnmarshalArgs(msg, &inSig, inArgs);
+					int len = inArgs->Size;
+
+					if (len != 0)
+					{
+						vArgs->Append(inArgs);
+					}
 				} 
 				while (status == ::AJ_OK);
 
+				int len = vArgs->Size;
+				args->Append(vArgs);
 				status = ::AJ_UnmarshalCloseContainer(msg, &arrayArg);
 
 				if (status != ::AJ_OK)
@@ -1306,28 +1316,28 @@ AllJoynWinRTComponent::AJ_Status AllJoynWinRTComponent::AllJoyn::AJ_UnmarshalClo
 				switch (SizeOfType(typeId)) 
 				{
 				case 1:
-					(*args).push_back((uint8_t)(*arg.val.v_byte));
+					args->Append((uint8_t)(*arg.val.v_byte));
 					break;
 
 				case 2:
 					if (typeId == 'n')
 					{
-						(*args).push_back((int16_t)(*arg.val.v_uint16));
+						args->Append((int16_t)(*arg.val.v_uint16));
 					}
 					else
 					{
-						(*args).push_back((uint16_t)(*arg.val.v_uint16));
+						args->Append((uint16_t)(*arg.val.v_uint16));
 					}
 					break;
 
 				case 4:
 					if (typeId == 'i')
 					{
-						(*args).push_back((int32_t)(*arg.val.v_uint32));
+						args->Append((int32_t)(*arg.val.v_uint32));
 					}
 					else
 					{
-						(*args).push_back((uint32_t)(*arg.val.v_uint32));
+						args->Append((uint32_t)(*arg.val.v_uint32));
 					}
 					break;
 
@@ -1335,15 +1345,15 @@ AllJoynWinRTComponent::AJ_Status AllJoynWinRTComponent::AllJoyn::AJ_UnmarshalClo
 					if (typeId == 'd')
 					{
 						double d = *((double*)(arg.val.v_uint64));
-						(*args).push_back(d);
+						args->Append(d);
 					}
 					else if (typeId == 'x')
 					{
-						(*args).push_back((int64_t)(*arg.val.v_uint64));
+						args->Append((int64_t)(*arg.val.v_uint64));
 					}
 					else
 					{
-						(*args).push_back((uint64_t)(*arg.val.v_uint64));
+						args->Append((uint64_t)(*arg.val.v_uint64));
 					}
 					break;
 				}
@@ -1351,7 +1361,7 @@ AllJoynWinRTComponent::AJ_Status AllJoynWinRTComponent::AllJoyn::AJ_UnmarshalClo
 			else 
 			{
 				MBSTOPLS(arg.val.v_string, val);
-				(*args).push_back(val);
+				args->Append(val);
 			}
 		}
 	}
@@ -1362,24 +1372,11 @@ AllJoynWinRTComponent::AJ_Status AllJoynWinRTComponent::AllJoyn::AJ_UnmarshalClo
 
 void AllJoynWinRTComponent::AllJoyn::AJ_UnmarshalArgsWithDelegate(AJ_Message^ msg, String^ signature, AJ_UnmarshalArgsDelegate^ func)
 {
-	std::vector<Object^> args;
-	Array<Object^>^ argsRT = nullptr;
+	Vector<Object^>^ args = ref new Vector<Object^>();
 	PLSTOMBS(signature, _signature);
 	const char* sig = _signature;
-	::AJ_Status _status = UnmarshalArgs(&msg->_msg, &sig, &args);
-
-	if (_status == ::AJ_OK)
-	{
-		int len = args.size();
-		argsRT = ref new Array<Object^>(len);
-
-		for (int i = 0; i < len; i++)
-		{
-			argsRT[i] = args[i];
-		}
-	}
-
-	func(static_cast<AJ_Status>(_status), argsRT);
+	::AJ_Status _status = UnmarshalArgs(&msg->_msg, &sig, args);
+	func(static_cast<AJ_Status>(_status), (_signature[0] == 'a' && args->Size == 1) ? (Vector<Object^>^)args->GetAt(0) : args);
 }
 
 

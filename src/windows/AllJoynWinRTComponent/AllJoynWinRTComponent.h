@@ -488,7 +488,7 @@ namespace AllJoynWinRTComponent
 	public delegate void AJ_PeerAuthenticateCallback(uint8_t status);
 	public delegate AJ_Status AJ_BusPropGetCallback(AJ_Message^ replyMsg, uint32_t propId);
 	public delegate AJ_Status AJ_BusPropSetCallback(AJ_Message^ replyMsg, uint32_t propId);
-	public delegate AJ_Status AJ_UnmarshalArgsDelegate(AJ_Status status, const Array<Object^>^ args);
+	public delegate AJ_Status AJ_UnmarshalArgsDelegate(AJ_Status status, IVector<Object^>^ args);
 
 	/**
 	* AllJoyn Windows Runtime
@@ -606,7 +606,7 @@ namespace AllJoynWinRTComponent
 		static void AuthCallback(const void* context, ::AJ_Status status);
 		static ::AJ_Status BusPropGetCallback(::AJ_Message* replyMsg, uint32_t propId, void* context);
 		static ::AJ_Status BusPropSetCallback(::AJ_Message* replyMsg, uint32_t propId, void* context);
-		static ::AJ_Status UnmarshalArgs(::AJ_Message* msg, const char** sig, std::vector<Object^>* args);
+		static ::AJ_Status UnmarshalArgs(::AJ_Message* msg, const char** sig, Vector<Object^>^ args);
 		static ::AJ_Status MarshalArgs(::AJ_Message* msg, const char** sig, std::vector<Object^>* args);
 		static std::vector<char*> GetArrayArgs(String^ strVal);
 		static std::vector<Object^> GetArrayArgsAsString(String^ strVal);
