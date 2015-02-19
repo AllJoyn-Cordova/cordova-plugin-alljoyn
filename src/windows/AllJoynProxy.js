@@ -227,7 +227,7 @@ cordova.commandProxy.add("AllJoyn", {
         function(messageObject, messageBody) {
           if (messageBody != null) {
             var sessionId = messageBody[1];
-            var sessionHost = messageObject.sender;
+            var sessionHost = service.name;
             success([sessionId, sessionHost]);
           } else {
             // TODO: How to get the error code, is it in the message header?
@@ -302,8 +302,8 @@ cordova.commandProxy.add("AllJoyn", {
         messageHandler.addHandler(
           replyMessageId, responseType,
           function(messageObject, messageBody) {
-            success(messageBody);
             messageHandler.removeHandler(replyMessageId, this[1]);
+            success(messageBody);
           }
         );
       }
