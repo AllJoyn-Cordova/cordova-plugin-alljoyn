@@ -27,4 +27,4 @@ test_script:
   - where cordova
   - where cordova-paramedic
   - set PLUGIN_PATH=c:\projects\cordova-plugin-alljoyn
-  - cordova-paramedic --platform windows --plugin $PLUGIN_PATH
+  - cordova-paramedic --platform windows --plugin %PLUGIN_PATH%
