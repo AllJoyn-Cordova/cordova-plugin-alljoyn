@@ -654,7 +654,7 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
             }
         }
 
-        const char* destinationChars = NULL;
+        const char* destinationChars = "";
         if(destination != nil) {
             destinationChars = [destination UTF8String];
         }
@@ -662,7 +662,7 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
         printf("MemberType: %u, MemberSignature: %s, IsSecure %u\n", memberType, memberSignature, isSecure);
         switch(memberType) {
             case AJ_METHOD_MEMBER:
-                status = AJ_MarshalMethodCall([self busAttachment], &msg, msgId, destinationChars, [sessionId unsignedIntValue], 0, MSG_TIMEOUT);
+                status = AJ_MarshalMethodCall([self busAttachment], &msg, msgId, destinationChars, [sessionId unsignedIntValue], 0, 0);
                 if(status != AJ_OK) {
                     printf("Failure marshalling method call");
                     goto e_Exit;
@@ -904,10 +904,6 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
                 if(marshalStatus.status == AJ_OK) {
                     NSMutableArray* dictValues = [NSMutableArray new];
                     marshalStatus = [self unmarshalArgumentsFor:pMsg withSignature:[signature substringFromIndex:i+1] toValues:dictValues];
-                    if(marshalStatus.status == AJ_OK && [dictValues count] != 2) {
-                        printf("Dictionary entry too large");
-                        marshalStatus.status = AJ_ERR_MARSHAL;
-                    }
                     if(marshalStatus.status == AJ_OK) {
                         i += marshalStatus.nextArgumentIndex;
                         [values addObject:dictValues];
@@ -1171,6 +1167,7 @@ ErrorExit:
             case AJ_ARG_DICT_ENTRY:
                 // Marshal the open container
                 arg.typeId = AJ_ARG_DICT_ENTRY;
+                signatureIndex += 1;
                 marshalStatus.status = AJ_MarshalContainer(pMsg, &arg, AJ_ARG_DICT_ENTRY);
                 if(marshalStatus.status == AJ_OK) {
                     // Get the dictionary entry values from the argument list
@@ -1181,7 +1178,7 @@ ErrorExit:
                         marshalStatus.status = AJ_ERR_MARSHAL;
                     } else {
                         // Marshal the key
-                        NSString* keySignature = [self getNextToken:[signature substringFromIndex:(signatureIndex + 1)]];
+                        NSString* keySignature = [self getNextToken:[signature substringFromIndex:(signatureIndex)]];
                         if(keySignature == nil) {
                             marshalStatus.status = AJ_ERR_MARSHAL;
                         } else {
@@ -1192,13 +1189,14 @@ ErrorExit:
                                 // marshal the value
                                 // The key could only have been a simple type so we start at the 2nd element
                                 // in the value array
-                                NSString* valueSignature = [self getNextToken:[signature substringFromIndex:(signatureIndex+1)]];
+                                NSString* valueSignature = [self getNextToken:[signature substringFromIndex:(signatureIndex)]];
                                 if(valueSignature ==nil) {
                                     marshalStatus.status = AJ_ERR_MARSHAL;
                                 } else {
                                     dictEntryMarshalStatus = [self marshalArgumentsFor:pMsg withSignature:valueSignature havingValues:dictEntryValues startingAtIndex:1];
                                     marshalStatus.status = dictEntryMarshalStatus.status;
                                     if(dictEntryMarshalStatus.status == AJ_OK) {
+
                                         signatureIndex += [valueSignature length];
                                         // If we are not at the closing dictionary entry marker then the signature
                                         // is invalid. It should be something like {<token><token>}
