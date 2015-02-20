@@ -880,6 +880,7 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
                 const char* varSig = NULL;
                 marshalStatus.status = AJ_UnmarshalVariant(pMsg, &varSig);
                 if(marshalStatus.status == AJ_OK) {
+                    [values addObject:[NSString stringWithUTF8String:varSig]];
                     // Marshal the actual type
                     marshalStatus.status = [self unmarshalArgumentsFor:pMsg withSignature:[NSString stringWithUTF8String:varSig] toValues:values].status;
                 }
