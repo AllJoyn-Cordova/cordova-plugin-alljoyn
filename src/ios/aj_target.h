@@ -82,6 +82,4 @@ extern uint8_t dbgTARGET_UTIL;
 
 #define AJ_EXPORT
 
-#define ANNOUNCE_BASED_DISCOVERY 1
-
 #endif
