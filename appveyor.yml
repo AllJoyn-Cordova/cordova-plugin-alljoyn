@@ -16,7 +16,7 @@ install:
   - npm link cordova-lib
   - npm install
   - cd ..\
-  - npm install cordova-paramedic
+  - npm install vjrantal/cordova-paramedic
 
 build: off
 
@@ -26,5 +26,5 @@ test_script:
   - set PATH=c:\projects\node_modules\.bin;c:\projects\cordova-cli\bin;%PATH%
   - where cordova
   - where cordova-paramedic
-  - set PLUGIN_PATH=c:\projects\cordova-plugin-alljoyn
+  - set PLUGIN_PATH=c:/projects/cordova-plugin-alljoyn
   - cordova-paramedic --platform windows --plugin %PLUGIN_PATH%

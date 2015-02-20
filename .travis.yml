@@ -3,7 +3,7 @@ install:
   - cd ../
   - npm install cordova
   - npm install ios-sim
-  - npm install cordova-paramedic
+  - npm install vjrantal/cordova-paramedic
 script:
   - export PATH=$(pwd)/node_modules/.bin:$PATH
   - export PLUGIN_PATH=$(pwd)/cordova-plugin-alljoyn
