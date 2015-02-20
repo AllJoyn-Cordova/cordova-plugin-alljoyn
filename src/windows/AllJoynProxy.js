@@ -430,12 +430,25 @@ var messageHandler = (function() {
               AllJoynWinRTComponent.AllJoyn.aj_UnmarshalArgsWithDelegate(aj_message, signature, function(unmarshalArgsStatus, messageArgs) {
                 if (unmarshalArgsStatus == AllJoynWinRTComponent.AJ_Status.aj_OK) {
                   console.log('Unmarshaling of arguments from message with id ' + receivedMessageId + ' succeeded');
+
                   // The messageArgs is an object array created in the Windows Runtime Component
-                  // so turn that to a JavaScript array before returning it.
-                  var response = [];
-                  for (var j = 0; j < messageArgs.length; j++) {
-                    response.push(messageArgs[j]);
-                  }
+                  // so turn that to a JavaScript array before returning it. Since there can be
+                  // nested container types we need to do this recursively.
+
+                  var getClass = {}.toString;
+                  var convertArgs = function (itemOrCollection) {
+                    // Check for the collection type we return for containers
+                    if (getClass.call(itemOrCollection) === '[object Windows.Foundation.Collections.IObservableVector`1<Object>]') {
+                      var subArray = [];
+                      for (var j = 0; j < itemOrCollection.length; j++) {
+                        subArray.push(convertArgs(itemOrCollection[j]));
+                      }
+                      return subArray;
+                    } else {
+                        return itemOrCollection;
+                    }
+                  };
+                  response = convertArgs(messageArgs);
                 } else {
                   console.log('Unmarshaling of arguments from message with id ' + receivedMessageId + ' failed with status ' + unmarshalArgsStatus);
                 }
