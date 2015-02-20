@@ -1,6 +1,8 @@
 # appveyor file
 # http://www.appveyor.com/docs/appveyor-yml
 
+clone_folder: c:\projects\cordova-plugin-alljoyn
+
 install:
   - cd ..
   - git clone https://github.com/apache/cordova-lib.git
@@ -13,9 +15,16 @@ install:
   - cd ..\..\cordova-cli
   - npm link cordova-lib
   - npm install
+  - cd ..\
+  - npm install cordova-paramedic
 
 build: off
 
 test_script:
   - node --version
   - npm --version
+  - set PATH=c:\projects\node_modules\.bin;c:\projects\cordova-cli\bin;%PATH%
+  - where cordova
+  - where cordova-paramedic
+  - set PLUGIN_PATH=c:\projects\cordova-plugin-alljoyn
+  - cordova-paramedic --platform windows --plugin $PLUGIN_PATH
