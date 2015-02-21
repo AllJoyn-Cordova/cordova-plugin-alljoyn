@@ -1376,7 +1376,7 @@ void AllJoynWinRTComponent::AllJoyn::AJ_UnmarshalArgsWithDelegate(AJ_Message^ ms
 	PLSTOMBS(signature, _signature);
 	const char* sig = _signature;
 	::AJ_Status _status = UnmarshalArgs(&msg->_msg, &sig, args);
-	func(static_cast<AJ_Status>(_status), (_signature[0] == 'a' && args->Size == 1) ? (Vector<Object^>^)args->GetAt(0) : args);
+	func(static_cast<AJ_Status>(_status), args);
 }
 
 
