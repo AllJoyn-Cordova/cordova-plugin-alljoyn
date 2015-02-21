@@ -46,7 +46,7 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
 @property AJ_Object* proxyObjects;
 @property AJ_Object* appObjects;
 
-@property AJ_BusAttachment* busAttachment;;
+@property AJ_BusAttachment* busAttachment;
 @end
 
 @implementation AllJoyn_Cordova
@@ -365,7 +365,7 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
             Marshal_Status marshalStatus = [self unmarshalArgumentsFor:pMsg withSignature:responseType toValues:msgArguments];
 
             if(marshalStatus.status == AJ_OK) {
-                [self sendSuccessArray:msgArguments toCallback:[command callbackId] withKeepCallback:true];
+                [self sendSuccessArray:msgArguments toCallback:[command callbackId] withKeepCallback:true withMsgInfoFrom:pMsg];
             } else {
                 [self sendErrorMessage:[NSString stringWithFormat:@"Error %s", AJ_StatusText(marshalStatus.status)] toCallback:[command callbackId] withKeepCallback:true];
             }
@@ -396,33 +396,7 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
 
                 [responseDictionary setObject:[NSString stringWithUTF8String:arg.val.v_string] forKey:@"name"];
                 [responseDictionary setObject:[NSString stringWithUTF8String:pMsg->sender] forKey:@"sender"];
-                [self sendSuccessDictionary:responseDictionary toCallback:[command callbackId] withKeepCallback:true];
-                return true;
-            };
-
-            [[self MessageHandlers] setObject:messageHandler forKey:methodKey];
-        }
-    }];
-}
-
--(void)addInterfacesListener:(CDVInvokedUrlCommand*)command {
-    [self.commandDelegate runInBackground:^{
-        NSArray* interfaces = [command argumentAtIndex:0];
-        AJ_Status status = [self askForAboutAnnouncements:[self busAttachment] forObjectsImplementing:interfaces];
-        if(status != AJ_OK) {
-            [self sendErrorMessage:@"Failure starting find" toCallback:[command callbackId] withKeepCallback:false];
-        } else {
-            NSNumber* methodKey = [NSNumber numberWithUnsignedInt:AJ_SIGNAL_ABOUT_ANNOUNCE];
-            MsgHandler messageHandler = ^bool(AJ_Message* pMsg) {
-                uint16_t aboutVersion, aboutPort;
-                AJ_UnmarshalArgs(pMsg, "qq", &aboutVersion, &aboutPort);
-                AJ_InfoPrintf((" -- AboutVersion: %d, AboutPort: %d\n", aboutVersion, aboutPort));
-                //TODO: Get more about info and convert to proper callback
-                NSMutableDictionary* responseDictionary = [NSMutableDictionary new];
-                [responseDictionary setObject:[NSNumber numberWithUnsignedInt:aboutVersion] forKey:@"version"];
-                [responseDictionary setObject:[NSNumber numberWithUnsignedInt:aboutPort] forKey:@"port"];
-                [responseDictionary setObject:[NSString stringWithUTF8String:pMsg->sender] forKey:@"name"];
-                [self sendSuccessDictionary:responseDictionary toCallback:[command callbackId] withKeepCallback:true];
+                [self sendSuccessDictionary:responseDictionary toCallback:[command callbackId] withKeepCallback:true withMsgInfoFrom:pMsg];
                 return true;
             };
 
@@ -540,13 +514,13 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
                         NSMutableArray* responseArray = [NSMutableArray new];
                         [responseArray addObject:[NSNumber numberWithUnsignedInt:sessionId]];
                         [responseArray addObject:name];
-                        [self sendSuccessArray:responseArray toCallback:[command callbackId] withKeepCallback:false];
+                        [self sendSuccessArray:responseArray toCallback:[command callbackId] withKeepCallback:false withMsgInfoFrom:pMsg];
                     } else {
                         if(replyCode == AJ_JOINSESSION_REPLY_ALREADY_JOINED) {
                             NSMutableArray* responseArray = [NSMutableArray new];
                             [responseArray addObject:[NSNumber numberWithUnsignedInt:pMsg->sessionId]];
                             [responseArray addObject:name];
-                            [self sendSuccessArray:responseArray toCallback:[command callbackId] withKeepCallback:false];
+                            [self sendSuccessArray:responseArray toCallback:[command callbackId] withKeepCallback:false withMsgInfoFrom:pMsg];
                         } else {
                             [self sendErrorMessage:[NSString stringWithFormat:@"Failure joining session replyCode = 0x%x %d", replyCode, replyCode] toCallback:[command callbackId] withKeepCallback:false];
                         }
@@ -730,7 +704,7 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
                         return true;
                     }
 
-                    [self sendSuccessArray:outValues toCallback:[command callbackId] withKeepCallback:false];
+                    [self sendSuccessArray:outValues toCallback:[command callbackId] withKeepCallback:false withMsgInfoFrom:pMsg];
 
                     return true;
                 };
@@ -867,7 +841,7 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
                     }
                 }
                 break;
-
+            case AJ_ARG_OBJ_PATH:
             case AJ_ARG_STRING: {
                 marshalStatus.status = AJ_UnmarshalArg(pMsg, &arg);
                 if(marshalStatus.status == AJ_OK) {
@@ -914,19 +888,15 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
             }
             case AJ_ARG_ARRAY: {
                 marshalStatus.status = AJ_UnmarshalContainer(pMsg, &arg, AJ_ARG_ARRAY);
-
-                unsigned int maximumArgumentLength = 0;
+                NSString* arrayTypeSignature = [self getNextToken:[signature substringFromIndex:i+1]];
                 NSMutableArray* arrayValues = [NSMutableArray new];
                 if(marshalStatus.status == AJ_OK) {
                     while(marshalStatus.status == AJ_OK) {
-                        marshalStatus = [self unmarshalArgumentFor:pMsg withSignature:[signature substringFromIndex:i+1] toValues:arrayValues];
-                        if(marshalStatus.nextArgumentIndex > maximumArgumentLength) {
-                            maximumArgumentLength = marshalStatus.nextArgumentIndex;
-                        }
+                        marshalStatus = [self unmarshalArgumentFor:pMsg withSignature:arrayTypeSignature toValues:arrayValues];
                     }
                 }
-                if(marshalStatus.status == AJ_ERR_NO_MORE) {
-                    i += maximumArgumentLength;
+                if(marshalStatus.status == AJ_ERR_NO_MORE || marshalStatus.status == AJ_OK) {
+                    i += arrayTypeSignature.length;
                     [values addObject:arrayValues];
                     marshalStatus.status = AJ_UnmarshalCloseContainer(pMsg, &arg);
 
@@ -1332,17 +1302,39 @@ dispatch_source_t CreateDispatchTimer(uint64_t interval,
     [self.commandDelegate sendPluginResult:pluginResult callbackId:callbackId];
 }
 
--(void) sendSuccessArray:(NSArray*)array toCallback:(NSString*)callbackId withKeepCallback:(Boolean)keepCallback {
+-(NSDictionary*)getMsgInfoFrom:(AJ_Message*)pMsg {
+    NSMutableDictionary* msgInfo = [NSMutableDictionary new];
+    if(pMsg) {
+        if(pMsg->sender) {
+            [msgInfo setObject:[NSString stringWithUTF8String:pMsg->sender] forKey:@"sender"];
+        }
+        if(pMsg->signature) {
+            [msgInfo setObject:[NSString stringWithUTF8String:pMsg->signature] forKey:@"signature"];
+        }
+        if(pMsg->iface) {
+            [msgInfo setObject:[NSString stringWithUTF8String:pMsg->iface] forKey:@"iface"];
+        }
+    }
+    return msgInfo;
+}
+
+-(void) sendSuccessArray:(NSArray*)argumentValues toCallback:(NSString*)callbackId withKeepCallback:(Boolean)keepCallback withMsgInfoFrom:(AJ_Message*)pMsg {
     CDVPluginResult* pluginResult = nil;
-    pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsArray:array];
+
+    NSArray* msgWithResults = [NSArray arrayWithObjects:[self getMsgInfoFrom:pMsg], argumentValues, nil];
+
+    pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsArray:msgWithResults];
     [pluginResult setKeepCallbackAsBool:keepCallback];
     [self.commandDelegate sendPluginResult:pluginResult callbackId:callbackId];
 
 }
 
--(void) sendSuccessDictionary:(NSDictionary*)dictionary toCallback:(NSString*)callbackId withKeepCallback:(Boolean)keepCallback {
+-(void) sendSuccessDictionary:(NSDictionary*)dictionary toCallback:(NSString*)callbackId withKeepCallback:(Boolean)keepCallback withMsgInfoFrom:(AJ_Message*)pMsg {
     CDVPluginResult* pluginResult = nil;
-    pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:dictionary];
+
+    NSArray* msgWithResults = [NSArray arrayWithObjects:[self getMsgInfoFrom:pMsg], dictionary, nil];
+
+    pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsArray:msgWithResults];
     [pluginResult setKeepCallbackAsBool:keepCallback];
     [self.commandDelegate sendPluginResult:pluginResult callbackId:callbackId];
 
