@@ -45,7 +45,7 @@ exports.defineAutoTests = function() {
     });
   });
 
-  xdescribe('Connecting to bus', function() {
+  describe('Connecting to bus', function() {
     it("bus should be returned after connecting", function(done) {
       AllJoyn.connect(function(bus) {
         expect(bus.addListener).toBeDefined();
