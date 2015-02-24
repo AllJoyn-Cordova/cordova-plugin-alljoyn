@@ -46,7 +46,7 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
 @property AJ_Object* proxyObjects;
 @property AJ_Object* appObjects;
 
-@property AJ_BusAttachment* busAttachment;
+@property AJ_BusAttachment* busAttachment;;
 @end
 
 @implementation AllJoyn_Cordova
@@ -415,9 +415,6 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
             NSNumber* methodKey = [NSNumber numberWithUnsignedInt:AJ_SIGNAL_ABOUT_ANNOUNCE];
             MsgHandler messageHandler = ^bool(AJ_Message* pMsg) {
                 uint16_t aboutVersion, aboutPort;
-                AJ_Status status = AJ_OK;
-                AJ_AboutObjectDescription objDescs[AJ_MAX_NUM_OF_OBJ_DESC];
-                uint16_t objDescsCount = 0;
                 AJ_UnmarshalArgs(pMsg, "qq", &aboutVersion, &aboutPort);
                 AJ_InfoPrintf((" -- AboutVersion: %d, AboutPort: %d\n", aboutVersion, aboutPort));
                 //TODO: Get more about info and convert to proper callback
@@ -425,42 +422,6 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
                 [responseDictionary setObject:[NSNumber numberWithUnsignedInt:aboutVersion] forKey:@"version"];
                 [responseDictionary setObject:[NSNumber numberWithUnsignedInt:aboutPort] forKey:@"port"];
                 [responseDictionary setObject:[NSString stringWithUTF8String:pMsg->sender] forKey:@"name"];
-
-
-
-                /**
-                 * Unmarshal the object description section i.e. the objects with their paths and published interface names
-                 */
-                status = AJ_AboutUnmarshalObjectDescriptions(pMsg, objDescs, &objDescsCount);
-                if(status == AJ_OK) {
-                    NSMutableArray* objects = [NSMutableArray new];
-                    for(uint32_t i = 0;i<objDescsCount;i++) {
-                        NSMutableDictionary* objectDescriptions = [NSMutableDictionary new];
-                        [objectDescriptions setObject:[NSString stringWithUTF8String:objDescs[i].path] forKey:@"path"];
-                        NSMutableArray* interfaces = [NSMutableArray new];
-                        for(uint32_t j = 0;j<objDescs[i].interfacesCount;j++) {
-                            [interfaces addObject:[NSString stringWithUTF8String:objDescs[i].interfaces[j]]];
-                        }
-                        [objectDescriptions setObject:interfaces forKey:@"interfaces"];
-                        [objects addObject:objectDescriptions];
-                    }
-                    [responseDictionary setObject:objects forKey:@"objects"];
-
-                    NSMutableArray* aboutProperties = [NSMutableArray new];
-                    status = [self unmarshalArgumentFor:pMsg withSignature:@"a{sv}" toValues:aboutProperties].status;
-                    if(status == AJ_OK) {
-                        if(aboutProperties.count > 0) {
-                            NSArray* unpackedProperties = aboutProperties[0];
-                            for (NSArray* propertyPair in unpackedProperties) {
-                                if(propertyPair.count > 1) {
-                                    // First value is the key/name of property
-                                    // Second value is the value of the property
-                                    [responseDictionary setObject:propertyPair[1] forKey:propertyPair[0]];
-                                }
-                            }
-                        }
-                    }
-                }
                 [self sendSuccessDictionary:responseDictionary toCallback:[command callbackId] withKeepCallback:true];
                 return true;
             };
@@ -693,7 +654,7 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
             }
         }
 
-        const char* destinationChars = NULL;
+        const char* destinationChars = "";
         if(destination != nil) {
             destinationChars = [destination UTF8String];
         }
@@ -701,7 +662,7 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
         printf("MemberType: %u, MemberSignature: %s, IsSecure %u\n", memberType, memberSignature, isSecure);
         switch(memberType) {
             case AJ_METHOD_MEMBER:
-                status = AJ_MarshalMethodCall([self busAttachment], &msg, msgId, destinationChars, [sessionId unsignedIntValue], 0, MSG_TIMEOUT);
+                status = AJ_MarshalMethodCall([self busAttachment], &msg, msgId, destinationChars, [sessionId unsignedIntValue], 0, 0);
                 if(status != AJ_OK) {
                     printf("Failure marshalling method call");
                     goto e_Exit;
@@ -906,7 +867,7 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
                     }
                 }
                 break;
-            case AJ_ARG_OBJ_PATH:
+
             case AJ_ARG_STRING: {
                 marshalStatus.status = AJ_UnmarshalArg(pMsg, &arg);
                 if(marshalStatus.status == AJ_OK) {
@@ -943,10 +904,6 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
                 if(marshalStatus.status == AJ_OK) {
                     NSMutableArray* dictValues = [NSMutableArray new];
                     marshalStatus = [self unmarshalArgumentsFor:pMsg withSignature:[signature substringFromIndex:i+1] toValues:dictValues];
-                    if(marshalStatus.status == AJ_OK && [dictValues count] != 2) {
-                        printf("Dictionary entry too large");
-                        marshalStatus.status = AJ_ERR_MARSHAL;
-                    }
                     if(marshalStatus.status == AJ_OK) {
                         i += marshalStatus.nextArgumentIndex;
                         [values addObject:dictValues];
@@ -957,15 +914,19 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
             }
             case AJ_ARG_ARRAY: {
                 marshalStatus.status = AJ_UnmarshalContainer(pMsg, &arg, AJ_ARG_ARRAY);
-                NSString* arrayTypeSignature = [self getNextToken:[signature substringFromIndex:i+1]];
+
+                unsigned int maximumArgumentLength = 0;
                 NSMutableArray* arrayValues = [NSMutableArray new];
                 if(marshalStatus.status == AJ_OK) {
                     while(marshalStatus.status == AJ_OK) {
-                        marshalStatus = [self unmarshalArgumentFor:pMsg withSignature:arrayTypeSignature toValues:arrayValues];
+                        marshalStatus = [self unmarshalArgumentFor:pMsg withSignature:[signature substringFromIndex:i+1] toValues:arrayValues];
+                        if(marshalStatus.nextArgumentIndex > maximumArgumentLength) {
+                            maximumArgumentLength = marshalStatus.nextArgumentIndex;
+                        }
                     }
                 }
-                if(marshalStatus.status == AJ_ERR_NO_MORE || marshalStatus.status == AJ_OK) {
-                    i += arrayTypeSignature.length;
+                if(marshalStatus.status == AJ_ERR_NO_MORE) {
+                    i += maximumArgumentLength;
                     [values addObject:arrayValues];
                     marshalStatus.status = AJ_UnmarshalCloseContainer(pMsg, &arg);
 
@@ -1206,6 +1167,7 @@ ErrorExit:
             case AJ_ARG_DICT_ENTRY:
                 // Marshal the open container
                 arg.typeId = AJ_ARG_DICT_ENTRY;
+                signatureIndex += 1;
                 marshalStatus.status = AJ_MarshalContainer(pMsg, &arg, AJ_ARG_DICT_ENTRY);
                 if(marshalStatus.status == AJ_OK) {
                     // Get the dictionary entry values from the argument list
@@ -1216,7 +1178,7 @@ ErrorExit:
                         marshalStatus.status = AJ_ERR_MARSHAL;
                     } else {
                         // Marshal the key
-                        NSString* keySignature = [self getNextToken:[signature substringFromIndex:(signatureIndex + 1)]];
+                        NSString* keySignature = [self getNextToken:[signature substringFromIndex:(signatureIndex)]];
                         if(keySignature == nil) {
                             marshalStatus.status = AJ_ERR_MARSHAL;
                         } else {
@@ -1227,13 +1189,14 @@ ErrorExit:
                                 // marshal the value
                                 // The key could only have been a simple type so we start at the 2nd element
                                 // in the value array
-                                NSString* valueSignature = [self getNextToken:[signature substringFromIndex:(signatureIndex+1)]];
+                                NSString* valueSignature = [self getNextToken:[signature substringFromIndex:(signatureIndex)]];
                                 if(valueSignature ==nil) {
                                     marshalStatus.status = AJ_ERR_MARSHAL;
                                 } else {
                                     dictEntryMarshalStatus = [self marshalArgumentsFor:pMsg withSignature:valueSignature havingValues:dictEntryValues startingAtIndex:1];
                                     marshalStatus.status = dictEntryMarshalStatus.status;
                                     if(dictEntryMarshalStatus.status == AJ_OK) {
+
                                         signatureIndex += [valueSignature length];
                                         // If we are not at the closing dictionary entry marker then the signature
                                         // is invalid. It should be something like {<token><token>}
