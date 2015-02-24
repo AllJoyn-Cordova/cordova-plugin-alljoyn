@@ -1,0 +1,19 @@
+{
+    "version": "0.0.2",
+    "name": "org.allseen.alljoyn",
+    "description": "Cordova AllJoyn Plugin",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/AllJoyn-Cordova/cordova-plugin-alljoyn.git"
+    },
+    "scripts": {
+        "test": "node tests/run.js"
+    },
+    "devDependencies": {
+        "alljoyn": "nkcfan/alljoyn#40d9392b1f0f227e9bcb06e07b71bb518ce3f144",
+        "cordova": "*",
+        "ios-sim": "*",
+        "ios-deploy": "*",
+        "cordova-parametic": "vjrantal/cordova-paramedic"
+    }
+}
