@@ -18,12 +18,12 @@ var getSignalRuleString = function(member, interface) {
 };
 
 var wrapMsgInfoReceivingCallback = function(callback) {
-  return function (msgInfoAndArguments) {
+  return function(msgInfoAndArguments) {
     var msg = {};
     msg.arguments = msgInfoAndArguments[1];
     var msgInfo = msgInfoAndArguments[0];
-    for(var msgInfoProp in msgInfo) {
-      if(msgInfo.hasOwnProperty(msgInfoProp)) {
+    for (var msgInfoProp in msgInfo) {
+      if (msgInfo.hasOwnProperty(msgInfoProp)) {
         msg[msgInfoProp] = msgInfo[msgInfoProp];
       }
     }
@@ -91,8 +91,11 @@ var AllJoyn = {
 
           console.log('aboutAnnouncementRule: ' + aboutAnnouncementRule);
           var onAboutAnnouncementReceived = function(message) {
-            var aboutAnnouncement = {};
-            aboutAnnouncement.message = message;
+            var aboutAnnouncement = {
+              message: message, // Original announcement message
+              objects: [], // Holds the object descriptions
+              properties: {}, // Properties from the announcement
+            };
             console.log('onAboutAnnouncementReceived: ' + JSON.stringify(arguments));
             if (message && message.arguments) {
               var msgArgs = message.arguments;
@@ -102,8 +105,10 @@ var AllJoyn = {
               if (msgArgs[1] !== undefined) {
                 aboutAnnouncement.port = msgArgs[1];
               }
+
+              // Get the object description from the announcement
+              // the 'a(oas)' part of the signature
               if (msgArgs[2] && msgArgs[2].constructor === Array) {
-                aboutAnnouncement.objects = [];
                 msgArgs[2].forEach(function(objectDescription) {
                   if (objectDescription.constructor === Array) {
                     var object = {};
@@ -113,10 +118,13 @@ var AllJoyn = {
                   }
                 });
               }
+
+              // Get the properties from the announcement
+              // the 'a{sv}' part of the signature
               if (msgArgs[3] && msgArgs[3].constructor === Array) {
                 msgArgs[3].forEach(function(objectProperty) {
                   if (objectProperty.constructor === Array) {
-                    aboutAnnouncement[objectProperty.shift()] = objectProperty;
+                    aboutAnnouncement.properties[objectProperty.shift()] = objectProperty;
                   }
                 });
               }
