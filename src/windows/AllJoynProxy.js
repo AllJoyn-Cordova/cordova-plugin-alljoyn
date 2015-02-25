@@ -246,7 +246,7 @@ cordova.commandProxy.add("AllJoyn", {
     var message = new AllJoynWinRTComponent.AJ_Message();
     // An empty string is used as a destination, because that ends up being converted to null platform string
     // in the Windows Runtime Component.
-    var destination = destination || "";
+    destination = destination || "";
 
     if (path) {
       AllJoynWinRTComponent.AllJoyn.aj_SetProxyObjectPath(registeredProxyObjects, messageId, path);
@@ -255,7 +255,13 @@ cordova.commandProxy.add("AllJoyn", {
     var status;
 
     if (isSignal) {
-      status = AllJoynWinRTComponent.AllJoyn.aj_MarshalSignal(busAttachment, message, messageId, destination, sessionId, 0, 0);
+      var signalFlags = 0;
+
+      // If no session id or destination specified then assume the signal is sessionless
+      if(!sessionId && destination === '') {
+        signalFlags = AllJoynWinRTComponent.AJ_MsgFlag.aj_Flag_Sessionless;
+      }
+      status = AllJoynWinRTComponent.AllJoyn.aj_MarshalSignal(busAttachment, message, messageId, destination, sessionId, signalFlags, 0);
       console.log("aj_MarshalSignal resulted in a status of " + status);
     } else {
       status = AllJoynWinRTComponent.AllJoyn.aj_MarshalMethodCall(busAttachment, message, messageId, destination, sessionId, 0, 0, 0);
