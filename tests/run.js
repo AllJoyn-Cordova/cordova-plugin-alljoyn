@@ -40,7 +40,8 @@ var runProcess = spawn(
     '--plugin',
     pluginDirectory,
     '--tempProjectPath',
-    temporaryDirectory
+    temporaryDirectory,
+    '--removeTempProject=true'
   ]
 );
 
