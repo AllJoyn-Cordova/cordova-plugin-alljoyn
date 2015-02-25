@@ -12,6 +12,20 @@ var getMessageId = function(indexList) {
   return AllJoynWinRTComponent.AllJoyn.aj_Encode_Message_ID(indexList[0], indexList[1], indexList[2], indexList[3]);
 }
 
+var getMsgInfo = function(ajMsg) {
+  var msgInfo = {};
+  if(ajMsg.sender !== undefined) {
+    msgInfo.sender = ajMsg.sender;
+  }
+  if(ajMsg.signature !== undefined) {
+    msgInfo.signature = ajMsg.signature;
+  }
+  if(ajMsg.iface !== undefined) {
+    msgInfo.iface = ajMsg.iface;
+  }
+  return msgInfo;
+};
+
 cordova.commandProxy.add("AllJoyn", {
   connect: function(success, error) {
     var daemonName = "";
@@ -71,43 +85,10 @@ cordova.commandProxy.add("AllJoyn", {
     messageHandler.addHandler(
       foundAdvertisedNameMessageId, 's',
       function(messageObject, messageBody) {
-        callback({ name: messageBody[0] });
-      }
-    );
-  },
-  addInterfacesListener: function(success, error, parameters) {
-    var interfaceNames = parameters[0];
-    var callback = parameters[1];
-
-    var ruleString = "interface='org.alljoyn.About',sessionless='t'";
-    var implementsString = ",implements='";
-    for (var i = 0; i < interfaceNames.length; i++) {
-      var interfaceName = interfaceNames[i];
-      ruleString += implementsString;
-      if (interfaceName.indexOf("$") === 0) {
-        ruleString += interfaceName.substring(1);
-      } else {
-        ruleString += interfaceName;
-      }
-      ruleString += "'";
-    }
-
-    // AJ_BUS_SIGNAL_ALLOW == 0
-    var status = AllJoynWinRTComponent.AllJoyn.aj_BusSetSignalRule(busAttachment, ruleString, 0);
-    if (status != AllJoynWinRTComponent.AJ_Status.aj_OK) {
-      error(status);
-      return;
-    }
-
-    var aboutAnnounceId = AllJoynWinRTComponent.AJ_Std.aj_Signal_About_Announce;
-    messageHandler.addHandler(
-      aboutAnnounceId, 'qq',
-      function(messageObject, messageBody) {
-        callback({
-          version: messageBody[0],
-          port: messageBody[1],
-          name: messageObject.sender
-        });
+        callback([
+          getMsgInfo(messageObject),
+          { name: messageBody[0] }
+        ]);
       }
     );
   },
@@ -229,7 +210,7 @@ cordova.commandProxy.add("AllJoyn", {
           if (messageBody != null) {
             var sessionId = messageBody[1];
             var sessionHost = service.name;
-            success([sessionId, sessionHost]);
+            success([getMsgInfo(messageObject),[sessionId, sessionHost]]);
           } else {
             // TODO: How to get the error code, is it in the message header?
             error();
@@ -303,7 +284,7 @@ cordova.commandProxy.add("AllJoyn", {
           replyMessageId, responseType,
           function(messageObject, messageBody) {
             messageHandler.removeHandler(replyMessageId, this[1]);
-            success(messageBody);
+            success([getMsgInfo(messageObject), messageBody]);
           }
         );
       }
@@ -319,7 +300,7 @@ cordova.commandProxy.add("AllJoyn", {
     messageHandler.addHandler(
       messageId, responseType,
       function(messageObject, messageBody) {
-        callback(messageBody);
+        callback([getMsgInfo(messageObject), messageBody]);
       }
     );
   },
