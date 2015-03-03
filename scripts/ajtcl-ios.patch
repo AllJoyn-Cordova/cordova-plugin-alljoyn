@@ -68,17 +68,3 @@ diff -ru upstream/aj_msg_priv.h patched/aj_msg_priv.h
  
 -#include <alljoyn.h>
 +#include "alljoyn.h"
- 
- 
- /**
- diff -ru upstream/aj_disco.c patched/aj_disco.c
---- upstream/aj_disco.c  2015-01-12 14:40:27.000000000 -0800
-+++ patched/aj_disco.c 2015-01-12 14:00:17.000000000 -0800
-@@ -23,6 +23,7 @@
-  */
- #define AJ_MODULE DISCO
- 
-+#include <stdlib.h>
- #include "aj_target.h"
- #include "aj_status.h"
- #include "aj_util.h"

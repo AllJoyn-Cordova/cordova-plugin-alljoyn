@@ -5,17 +5,7 @@ clone_folder: c:\projects\cordova-plugin-alljoyn
 
 install:
   - cd ..
-  - git clone https://github.com/apache/cordova-lib.git
-  - git -C cordova-lib checkout a506acd3df34eed42336e5c627403004b0ff80f1
-  - git clone https://github.com/apache/cordova-cli.git
-  - git -C cordova-cli checkout 4.2.0
-  - cd cordova-lib\cordova-lib
-  - npm install
-  - npm link
-  - cd ..\..\cordova-cli
-  - npm link cordova-lib
-  - npm install
-  - cd ..\
+  - npm install cordova
   - npm install vjrantal/cordova-paramedic
 
 build: off
