@@ -62,7 +62,7 @@ Using the plugin for Windows platforms
 
 ```
 $ cd /path/to/your/cordova/app
-$ cordova add [/path/to/plugin or <url to this git repo>]
+$ cordova add [/path/to/plugin or <url to this git repo> or org.allseen.alljoyn]
 $ cordova platform add windows
 ```
 
@@ -78,12 +78,6 @@ $ cordova run windows --device --archs="x64" -- -win
 ```
 
 Alternative for running with Cordova scripts is to open the solution file generated after "cordova platform add windows"-command in Visual Studio and running the wanted app project. In this case, these is a need to manually select the correct architecture from build configuration.
-
-Caveats
--------
-* Building a Cordova app with the plugin for the windows platform requires two unreleased features:
-  * https://issues.apache.org/jira/browse/CB-7911
-  * https://issues.apache.org/jira/browse/CB-8123
 
 Resources
 ---------
