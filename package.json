@@ -11,7 +11,12 @@
     },
     "devDependencies": {
         "cordova": "*",
-        "cordova-parametic": "vjrantal/cordova-paramedic"
+        "cordova-parametic": "vjrantal/cordova-paramedic",
+        "grunt": "^0.4.5",
+        "grunt-contrib-jscs": "^0.1.8",
+        "grunt-contrib-jshint": "^0.10.0",
+        "grunt-jscs": "^0.8.1",
+        "load-grunt-tasks": "^1.0.0"
     },
     "optionalDependencies": {
       "alljoyn": "nkcfan/alljoyn#40d9392b1f0f227e9bcb06e07b71bb518ce3f144",
