@@ -10,7 +10,7 @@ var registeredProxyObjects = null;
 
 var getMessageId = function(indexList) {
   return AllJoynWinRTComponent.AllJoyn.aj_Encode_Message_ID(indexList[0], indexList[1], indexList[2], indexList[3]);
-}
+};
 
 var getMsgInfo = function(ajMsg) {
   var msgInfo = {};
@@ -26,11 +26,11 @@ var getMsgInfo = function(ajMsg) {
   return msgInfo;
 };
 
-cordova.commandProxy.add("AllJoyn", {
+cordova.commandProxy.add('AllJoyn', {
   connect: function(success, error) {
-    var daemonName = "";
+    var daemonName = '';
     var status = AllJoynWinRTComponent.AllJoyn.aj_FindBusAndConnect(busAttachment, daemonName, AJ_CONNECT_TIMEOUT);
-    if (status == AllJoynWinRTComponent.AJ_Status.aj_OK) {
+    if (status === AllJoynWinRTComponent.AJ_Status.aj_OK) {
       messageHandler.start(busAttachment);
       success();
     } else {
@@ -44,27 +44,33 @@ cordova.commandProxy.add("AllJoyn", {
     // we can't pass null JavaScript values to functions that expect
     // strings, but they have to be first converted into empty strings.
     var getAllJoynObjects = function(objects) {
-      if (objects == null || objects.length == 0) return [null];
+      if (objects === null || objects.length === 0) {
+        return [null];
+      }
       var allJoynObjects = [];
-      for (var i = 0; i < objects.length; i++) {
-        if (objects[i] == null) {
+      for (var i = 0; i < objects.length; i += 1) {
+        if (objects[i] === null) {
           allJoynObjects.push(null);
           break;
         }
         var allJoynObject = new AllJoynWinRTComponent.AJ_Object();
         allJoynObject.path = objects[i].path;
         var interfaces = objects[i].interfaces;
-        for (var j = 0; j < interfaces.length; j++) {
+        for (var j = 0; j < interfaces.length; j += 1) {
           var interface = interfaces[j];
-          if (interface === null) break;
+          if (interface === null) {
+            break;
+          }
           var lastIndex = interface.length - 1;
-          if (interface[lastIndex] === null) interface[lastIndex] = "";
+          if (interface[lastIndex] === null) {
+            interface[lastIndex] = '';
+          }
         }
         allJoynObject.interfaces = interfaces;
         allJoynObjects.push(allJoynObject);
       }
       return allJoynObjects;
-    }
+    };
     var applicationObjects = getAllJoynObjects(parameters[0]);
     var proxyObjects = getAllJoynObjects(parameters[1]);
     AllJoynWinRTComponent.AllJoyn.aj_RegisterObjects(applicationObjects, proxyObjects);
@@ -76,7 +82,7 @@ cordova.commandProxy.add("AllJoyn", {
     var callback = parameters[1];
 
     var status = AllJoynWinRTComponent.AllJoyn.aj_BusFindAdvertisedName(busAttachment, name, AJ_BUS_START_FINDING);
-    if (status != AllJoynWinRTComponent.AJ_Status.aj_OK) {
+    if (status !== AllJoynWinRTComponent.AJ_Status.aj_OK) {
       error(status);
       return;
     }
@@ -100,32 +106,32 @@ cordova.commandProxy.add("AllJoyn", {
     var status;
 
     status = AllJoynWinRTComponent.AllJoyn.aj_BusBindSessionPort(busAttachment, port, sessionOptions, 0);
-    if (status == AllJoynWinRTComponent.AJ_Status.aj_OK) {
+    if (status === AllJoynWinRTComponent.AJ_Status.aj_OK) {
       var bindReplyId = AllJoynWinRTComponent.AllJoyn.aj_Reply_ID(AllJoynWinRTComponent.AJ_Std.aj_Method_Bind_Session_Port);
       messageHandler.addHandler(
         bindReplyId, null,
         function(messageObject, messageBody) {
-          console.log("Got bindReplyId");
+          console.log('Got bindReplyId');
           messageHandler.removeHandler(bindReplyId, this[1]);
           status = AllJoynWinRTComponent.AllJoyn.aj_BusRequestName(busAttachment, wellKnownName, 0);
-          if (status == AllJoynWinRTComponent.AJ_Status.aj_OK) {
+          if (status === AllJoynWinRTComponent.AJ_Status.aj_OK) {
             var requestNameReplyId = AllJoynWinRTComponent.AllJoyn.aj_Reply_ID(AllJoynWinRTComponent.AJ_Std.aj_Method_Request_Name);
             messageHandler.addHandler(
               requestNameReplyId, null,
               function(messageObject, messageBody) {
-                console.log("Got requestNameReplyId");
+                console.log('Got requestNameReplyId');
                 messageHandler.removeHandler(requestNameReplyId, this[1]);
                 // 65535 == TRANSPORT_ANY
                 var transportMask = 65535;
                 // 0 == AJ_BUS_START_ADVERTISING
                 var op = 0;
                 status = AllJoynWinRTComponent.AllJoyn.aj_BusAdvertiseName(busAttachment, wellKnownName, transportMask, op, 0);
-                if (status == AllJoynWinRTComponent.AJ_Status.aj_OK) {
+                if (status === AllJoynWinRTComponent.AJ_Status.aj_OK) {
                   var advertiseNameReplyId = AllJoynWinRTComponent.AllJoyn.aj_Reply_ID(AllJoynWinRTComponent.AJ_Std.aj_Method_Advertise_Name);
                   messageHandler.addHandler(
                     advertiseNameReplyId, null,
                     function(messageObject, messageBody) {
-                      console.log("Got advertiseNameReplyId");
+                      console.log('Got advertiseNameReplyId');
                       messageHandler.removeHandler(advertiseNameReplyId, this[1]);
                       success();
                     }
@@ -151,32 +157,32 @@ cordova.commandProxy.add("AllJoyn", {
     var status;
 
     status = AllJoynWinRTComponent.AllJoyn.aj_BusUnbindSession(busAttachment, port);
-    if (status == AllJoynWinRTComponent.AJ_Status.aj_OK) {
+    if (status === AllJoynWinRTComponent.AJ_Status.aj_OK) {
       var unbindReplyId = AllJoynWinRTComponent.AllJoyn.aj_Reply_ID(AllJoynWinRTComponent.AJ_Std.aj_Method_Unbind_Session);
       messageHandler.addHandler(
         unbindReplyId, null,
         function(messageObject, messageBody) {
-          console.log("Got unbindReplyId");
+          console.log('Got unbindReplyId');
           messageHandler.removeHandler(unbindReplyId, this[1]);
           status = AllJoynWinRTComponent.AllJoyn.aj_BusReleaseName(busAttachment, wellKnownName);
-          if (status == AllJoynWinRTComponent.AJ_Status.aj_OK) {
+          if (status === AllJoynWinRTComponent.AJ_Status.aj_OK) {
             var releaseNameReplyId = AllJoynWinRTComponent.AllJoyn.aj_Reply_ID(AllJoynWinRTComponent.AJ_Std.aj_Method_Release_Name);
             messageHandler.addHandler(
               releaseNameReplyId, null,
               function(messageObject, messageBody) {
-                console.log("Got releaseNameReplyId");
+                console.log('Got releaseNameReplyId');
                 messageHandler.removeHandler(releaseNameReplyId, this[1]);
                 // 65535 == TRANSPORT_ANY
                 var transportMask = 65535;
                 // 1 == AJ_BUS_STOP_ADVERTISING
                 var op = 1;
                 status = AllJoynWinRTComponent.AllJoyn.aj_BusAdvertiseName(busAttachment, wellKnownName, transportMask, op, 0);
-                if (status == AllJoynWinRTComponent.AJ_Status.aj_OK) {
+                if (status === AllJoynWinRTComponent.AJ_Status.aj_OK) {
                   var cancelAdvertiseNameReplyId = AllJoynWinRTComponent.AllJoyn.aj_Reply_ID(AllJoynWinRTComponent.AJ_Std.aj_Method_Cancel_Advertise);
                   messageHandler.addHandler(
                     cancelAdvertiseNameReplyId, null,
                     function(messageObject, messageBody) {
-                      console.log("Got cancelAdvertiseNameReplyId");
+                      console.log('Got cancelAdvertiseNameReplyId');
                       messageHandler.removeHandler(cancelAdvertiseNameReplyId, this[1]);
                       success();
                     }
@@ -201,13 +207,13 @@ cordova.commandProxy.add("AllJoyn", {
     // Use null value as session options, which means that AllJoyn will use the default options
     var sessionOptions = null;
     var status = AllJoynWinRTComponent.AllJoyn.aj_BusJoinSession(busAttachment, service.name, service.port, sessionOptions);
-    if (status == AllJoynWinRTComponent.AJ_Status.aj_OK) {
+    if (status === AllJoynWinRTComponent.AJ_Status.aj_OK) {
       var joinSessionReplyId = AllJoynWinRTComponent.AllJoyn.aj_Reply_ID(AllJoynWinRTComponent.AllJoyn.aj_Bus_Message_ID(1, 0, 10));
       messageHandler.addHandler(
         joinSessionReplyId, 'uu',
         function(messageObject, messageBody) {
           messageHandler.removeHandler(joinSessionReplyId, this[1]);
-          if (messageBody != null) {
+          if (messageBody !== null) {
             var sessionId = messageBody[1];
             var sessionHost = service.name;
             success([getMsgInfo(messageObject),[sessionId, sessionHost]]);
@@ -224,7 +230,7 @@ cordova.commandProxy.add("AllJoyn", {
   leaveSession: function(success, error, parameters) {
     var sessionId = parameters[0];
     var status = AllJoynWinRTComponent.AllJoyn.aj_BusLeaveSession(busAttachment, sessionId);
-    if (status == AllJoynWinRTComponent.AJ_Status.aj_OK) {
+    if (status === AllJoynWinRTComponent.AJ_Status.aj_OK) {
       success();
     } else {
       error();
@@ -240,13 +246,13 @@ cordova.commandProxy.add("AllJoyn", {
       args = parameters[6],
       responseType = parameters[7];
 
-    var isSignal = (signature.lastIndexOf("!") === 0);
+    var isSignal = (signature.lastIndexOf('!') === 0);
 
     var messageId = getMessageId(indexList);
     var message = new AllJoynWinRTComponent.AJ_Message();
     // An empty string is used as a destination, because that ends up being converted to null platform string
     // in the Windows Runtime Component.
-    destination = destination || "";
+    destination = destination || '';
 
     if (path) {
       AllJoynWinRTComponent.AllJoyn.aj_SetProxyObjectPath(registeredProxyObjects, messageId, path);
@@ -262,30 +268,30 @@ cordova.commandProxy.add("AllJoyn", {
         signalFlags = AllJoynWinRTComponent.AJ_MsgFlag.aj_Flag_Sessionless;
       }
       status = AllJoynWinRTComponent.AllJoyn.aj_MarshalSignal(busAttachment, message, messageId, destination, sessionId, signalFlags, 0);
-      console.log("aj_MarshalSignal resulted in a status of " + status);
+      console.log('aj_MarshalSignal resulted in a status of ' + status);
     } else {
       status = AllJoynWinRTComponent.AllJoyn.aj_MarshalMethodCall(busAttachment, message, messageId, destination, sessionId, 0, 0, 0);
-      console.log("aj_MarshalMethodCall resulted in a status of " + status);
+      console.log('aj_MarshalMethodCall resulted in a status of ' + status);
     }
 
-    if (status == AllJoynWinRTComponent.AJ_Status.aj_OK && args) {
+    if (status === AllJoynWinRTComponent.AJ_Status.aj_OK && args) {
       status = AllJoynWinRTComponent.AllJoyn.aj_MarshalArgs(message, argsType, args);
-      console.log("aj_MarshalArgs resulted in a status of " + status);
+      console.log('aj_MarshalArgs resulted in a status of ' + status);
     }
 
-    if (status == AllJoynWinRTComponent.AJ_Status.aj_OK) {
+    if (status === AllJoynWinRTComponent.AJ_Status.aj_OK) {
       status = AllJoynWinRTComponent.AllJoyn.aj_DeliverMsg(message);
-      console.log("aj_DeliverMsg resulted in a status of " + status);
+      console.log('aj_DeliverMsg resulted in a status of ' + status);
     }
 
     // Messages must be closed to free resources.
     AllJoynWinRTComponent.AllJoyn.aj_CloseMsg(message);
 
-    if (status == AllJoynWinRTComponent.AJ_Status.aj_OK) {
+    if (status === AllJoynWinRTComponent.AJ_Status.aj_OK) {
       if (isSignal) {
         success();
       } else {
-        replyMessageId = AllJoynWinRTComponent.AllJoyn.aj_Reply_ID(messageId);
+        var replyMessageId = AllJoynWinRTComponent.AllJoyn.aj_Reply_ID(messageId);
         messageHandler.addHandler(
           replyMessageId, responseType,
           function(messageObject, messageBody) {
@@ -337,7 +343,7 @@ cordova.commandProxy.add("AllJoyn", {
 
     var status = AllJoynWinRTComponent.AllJoyn.aj_BusSetSignalRule(busAttachment, ruleString, applyRule);
 
-    if (status == AllJoynWinRTComponent.AJ_Status.aj_OK) {
+    if (status === AllJoynWinRTComponent.AJ_Status.aj_OK) {
       success();
     } else {
       error(status);
@@ -382,40 +388,40 @@ var messageHandler = (function() {
     var runningFast;
     // This function can be called to update the interval based on if
     // the bus attachment had new messages or now. The idea is that if there are
-    // messages, we run the loop faster to "flush the bus" and slower if there is
+    // messages, we run the loop faster to 'flush the bus' and slower if there is
     // nothing new.
     var updateInterval = function(unmarshalStatus) {
-      if (unmarshalStatus == AllJoynWinRTComponent.AJ_Status.aj_OK) {
+      if (unmarshalStatus === AllJoynWinRTComponent.AJ_Status.aj_OK) {
         if (!runningFast) {
           clearInterval(interval);
           runningFast = true;
           interval = setInterval(handlerFunction, AJ_MESSAGE_FAST_LOOP_INTERVAL);
         }
       }
-      if (unmarshalStatus == AllJoynWinRTComponent.AJ_Status.aj_ERR_TIMEOUT) {
+      if (unmarshalStatus === AllJoynWinRTComponent.AJ_Status.aj_ERR_TIMEOUT) {
         if (runningFast) {
           clearInterval(interval);
           runningFast = false;
           interval = setInterval(handlerFunction, AJ_MESSAGE_SLOW_LOOP_INTERVAL);
         }
       }
-    }
+    };
     var handlerFunction = function() {
       var aj_message = new AllJoynWinRTComponent.AJ_Message();
       AllJoynWinRTComponent.AllJoyn.aj_UnmarshalMsg(busAttachment, aj_message, AJ_UNMARSHAL_TIMEOUT).done(function(status) {
-        if (status == AllJoynWinRTComponent.AJ_Status.aj_OK) {
+        if (status === AllJoynWinRTComponent.AJ_Status.aj_OK) {
           var messageObject = aj_message.get();
           var receivedMessageId = messageObject.msgId;
           // Check if we have listeners for this message id
           if (messageListeners[receivedMessageId]) {
             // Pass the value to listeners
             var callbacks = messageListeners[receivedMessageId];
-            for (var i = 0; i < callbacks.length; i++) {
+            for (var i = 0; i < callbacks.length; i += 1) {
               var signature = callbacks[i][0];
               var response = null;
               // Unmarshal the message arguments
               AllJoynWinRTComponent.AllJoyn.aj_UnmarshalArgsWithDelegate(aj_message, signature, function(unmarshalArgsStatus, messageArgs) {
-                if (unmarshalArgsStatus == AllJoynWinRTComponent.AJ_Status.aj_OK) {
+                if (unmarshalArgsStatus === AllJoynWinRTComponent.AJ_Status.aj_OK) {
                   console.log('Unmarshaling of arguments from message with id ' + receivedMessageId + ' succeeded');
 
                   // The messageArgs is an object array created in the Windows Runtime Component
@@ -427,7 +433,7 @@ var messageHandler = (function() {
                     // Check for the collection type we return for containers
                     if (getClass.call(itemOrCollection) === '[object Windows.Foundation.Collections.IObservableVector`1<Object>]') {
                       var subArray = [];
-                      for (var j = 0; j < itemOrCollection.length; j++) {
+                      for (var j = 0; j < itemOrCollection.length; j += 1) {
                         subArray.push(convertArgs(itemOrCollection[j]));
                       }
                       return subArray;
@@ -440,7 +446,7 @@ var messageHandler = (function() {
                   console.log('Unmarshaling of arguments from message with id ' + receivedMessageId + ' failed with status ' + unmarshalArgsStatus);
                 }
 
-                if (receivedMessageId == METHOD_ACCEPT_SESSION_ID) {
+                if (receivedMessageId === METHOD_ACCEPT_SESSION_ID) {
                   callbacks[i][1](messageObject, response, aj_message, function() {
                     // When request handled, close message and continue with the handler loop
                     AllJoynWinRTComponent.AllJoyn.aj_CloseMsg(aj_message);
@@ -463,23 +469,23 @@ var messageHandler = (function() {
         }
         updateInterval(status);
       });
-    }
+    };
     // Initially start with slower interval
     runningFast = false;
     interval = setInterval(handlerFunction, AJ_MESSAGE_SLOW_LOOP_INTERVAL);
-  }
+  };
 
   messageHandler.stop = function() {
     clearInterval(interval);
-  }
+  };
 
   messageHandler.addHandler = function(messageId, signature, callback) {
     // Create a list of handlers for this message id if it doesn't exist yet
-    if (typeof messageListeners[messageId] != "object") {
+    if (typeof messageListeners[messageId] !== 'object') {
       messageListeners[messageId] = [];
     }
     messageListeners[messageId].push([signature, callback]);
-  }
+  };
 
   messageHandler.removeHandler = function(messageId, callback) {
     messageListeners[messageId] = messageListeners[messageId].filter(
@@ -488,7 +494,7 @@ var messageHandler = (function() {
         return (element[1] !== callback);
       }
     );
-  }
+  };
 
   return messageHandler;
 })();

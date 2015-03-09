@@ -1,19 +1,19 @@
 exports.defineAutoTests = function() {
   describe('AllJoyn global object (window.AllJoyn)', function() {
-    it("should exist", function() {
+    it('should exist', function() {
       expect(window.AllJoyn).toBeDefined();
     });
   });
 
   describe('Object registration', function() {
-    it("registering valid objects", function(done) {
+    it('registering valid objects', function(done) {
       var applicationObjects = [
         {
-          path: "/path",
+          path: '/path',
           interfaces: [
             [
-              "com.example.application.interface",
-              "?Sample <sas >v",
+              'com.example.application.interface',
+              '?Sample <sas >v',
               null
             ],
             null
@@ -23,11 +23,11 @@ exports.defineAutoTests = function() {
       ];
       var proxyObjects = [
         {
-          path: "/path",
+          path: '/path',
           interfaces: [
             [
-              "com.example.proxy.interface",
-              "?Sample <sas >v",
+              'com.example.proxy.interface',
+              '?Sample <sas >v',
               null
             ],
             null
@@ -46,7 +46,7 @@ exports.defineAutoTests = function() {
   });
 
   describe('Connecting to bus', function() {
-    it("bus should be returned after connecting", function(done) {
+    it('bus should be returned after connecting', function(done) {
       AllJoyn.connect(function(bus) {
         expect(bus.addListener).toBeDefined();
         // TODO: Check also other members of the bus object

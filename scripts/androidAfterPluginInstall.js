@@ -12,7 +12,7 @@ module.exports = function (context) {
   var ajtclPath = path.join(__dirname, '..', 'src', 'ajtcl');
   var ajtclAndroidPath = path.join(__dirname, '..', 'src', 'ajtcl-android');
   var buildScriptPath = path.join(ajtclAndroidPath, 'buildPlugin.sh'); 
-  var destPath = path.join(__dirname, '..', 'src', 'android')
+  var destPath = path.join(__dirname, '..', 'src', 'android');
 
   try {
     process.chdir(ajtclAndroidPath);
@@ -28,7 +28,7 @@ module.exports = function (context) {
         }
     });
   } catch (err) {
-    console.log("Error building assets.");
+    console.log('Error building assets.');
     deferral.resolve();
   }
 

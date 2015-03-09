@@ -12,7 +12,7 @@ module.exports = function (context) {
   var ajtclUpstream = 'https://github.com/irjudson/ajtcl-android.git';
 
   if (fs.existsSync(ajtclDirectory)) {
-    console.log("Found ajtcl-android from: " + path.resolve(ajtclDirectory));
+    console.log('Found ajtcl-android from: ' + path.resolve(ajtclDirectory));
   } else {
     console.log('Cloning ajtcl-android from: ' + ajtclUpstream);
     exec('git clone  ' + ajtclUpstream + ' ' + ajtclDirectory,

@@ -13,7 +13,7 @@ module.exports = function (context) {
   var ajtclBranch = 'RB14.12';
 
   if (fs.existsSync(ajtclDirectory)) {
-    console.log("Found ajtcl from: " + path.resolve(ajtclDirectory));
+    console.log('Found ajtcl from: ' + path.resolve(ajtclDirectory));
     deferral.resolve();
   } else {
     console.log('Cloning ajtcl from: ' + ajtclUpstream);

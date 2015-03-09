@@ -13,15 +13,15 @@ var spawn = require('child_process').spawn;
   var interface = alljoyn.InterfaceDescription();
   bus.createInterface('org.alljoyn.bus.dummy.interface', interface);
 
-  var object = alljoyn.BusObject("/dummyObject");
+  var object = alljoyn.BusObject('/dummyObject');
   object.addInterface(interface);
 
   bus.registerSignalHandler(object,
       function(message, info) {
-          console.log("Message received: ", message, info);
+          console.log('Message received: ', message, info);
       },
       interface,
-      "Dummy"
+      'Dummy'
   );
 
   bus.start();

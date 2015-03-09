@@ -1,7 +1,5 @@
-var argscheck = require('cordova/argscheck'),
-  utils = require('cordova/utils'),
-  exec = require('cordova/exec'),
-  cordova = require('cordova');
+var exec = require('cordova/exec');
+var cordova = require('cordova');
 
 var registeredObjects = [];
 
@@ -14,7 +12,7 @@ var getSignature = function(indexList, objectsList) {
 };
 
 var getSignalRuleString = function(member, interface) {
-  return "type='signal',member='" + member + "',interface='" + interface + "'";
+  return 'type=\'signal\',member=\'' + member + '\',interface=\'' + interface + '\'';
 };
 
 var wrapMsgInfoReceivingCallback = function(callback) {
@@ -27,7 +25,7 @@ var wrapMsgInfoReceivingCallback = function(callback) {
         msg[msgInfoProp] = msgInfo[msgInfoProp];
       }
     }
-    console.log("returning msg: " + JSON.stringify(msg));
+    console.log('returning msg: ' + JSON.stringify(msg));
     callback(msg);
   };
 };
@@ -43,11 +41,11 @@ var AllJoyn = {
           // The listener is also passed as a parameter, because in the Windows implementation, the success callback
           // can't be called multiple times.
           var wrappedListener = wrapMsgInfoReceivingCallback(listener);
-          exec(wrappedListener, function() {}, "AllJoyn", "addListener", [indexList, responseType, wrappedListener]);
+          exec(wrappedListener, function() {}, 'AllJoyn', 'addListener', [indexList, responseType, wrappedListener]);
         },
         // joinSessionRequest = {
         //   port: 12,
-        //   sender: "afa-f",
+        //   sender: 'afa-f',
         //   sessionId: 123,
         //   response: function // to be called with either true or false
         // }
@@ -57,14 +55,14 @@ var AllJoyn = {
         },
         addSignalRule: function(success, error, member, interfaceName) {
           var ruleString = getSignalRuleString(member, interfaceName);
-          exec(success, error, "AllJoyn", "setSignalRule", [ruleString, 0]);
+          exec(success, error, 'AllJoyn', 'setSignalRule', [ruleString, 0]);
         },
         removeSignalRule: function(success, error, member, interfaceName) {
           var ruleString = getSignalRuleString(member, interfaceName);
-          exec(success, error, "AllJoyn", "setSignalRule", [ruleString, 1]);
+          exec(success, error, 'AllJoyn', 'setSignalRule', [ruleString, 1]);
         },
         /*
-         * When name found, listener is called with parameter { name: "the.name.found" }
+         * When name found, listener is called with parameter { name: 'the.name.found' }
          */
         addAdvertisedNameListener: function(name, listener) {
           var getAdvertisedNameObject = function(message) {
@@ -76,16 +74,16 @@ var AllJoyn = {
           var wrappedListener = wrapMsgInfoReceivingCallback(function(message) {
             listener(getAdvertisedNameObject(message));
           });
-          exec(wrappedListener, function() {}, "AllJoyn", "addAdvertisedNameListener", [name, wrappedListener]);
+          exec(wrappedListener, function() {}, 'AllJoyn', 'addAdvertisedNameListener', [name, wrappedListener]);
         },
         addInterfacesListener: function(interfaceNames, listener) {
-          var aboutAnnouncementRule = "interface='org.alljoyn.About',sessionless='t'";
+          var aboutAnnouncementRule = 'interface=\'org.alljoyn.About\',sessionless=\'t\'';
           if (interfaceNames) {
             if (interfaceNames.constructor !== Array) {
               interfaceNames = [interfaceNames];
             }
             interfaceNames.forEach(function(currentValue, index, array) {
-              aboutAnnouncementRule += ",implements='" + currentValue + "'";
+              aboutAnnouncementRule += ',implements=\'' + currentValue + '\'';
             });
           }
 
@@ -136,17 +134,17 @@ var AllJoyn = {
             var aboutAnnouncementIndexList = [0, 5, 1, 3]; // AJ_SIGNAL_ABOUT_ANNOUNCE
             bus.addListener(aboutAnnouncementIndexList, 'qqa(oas)a{sv}', onAboutAnnouncementReceived);
           };
-          exec(onAddAboutAnnouncementRuleSuccess, function() {}, "AllJoyn", "setSignalRule", [aboutAnnouncementRule, 0]);
+          exec(onAddAboutAnnouncementRuleSuccess, function() {}, 'AllJoyn', 'setSignalRule', [aboutAnnouncementRule, 0]);
         },
         startAdvertisingName: function(success, error, name, port) {
-          exec(success, error, "AllJoyn", "startAdvertisingName", [name, port]);
+          exec(success, error, 'AllJoyn', 'startAdvertisingName', [name, port]);
         },
         stopAdvertisingName: function(success, error, name, port) {
-          exec(success, error, "AllJoyn", "stopAdvertisingName", [name, port]);
+          exec(success, error, 'AllJoyn', 'stopAdvertisingName', [name, port]);
         },
         /*
               var service = {
-                name: "name.of.the.service",
+                name: 'name.of.the.service',
                 port: 12
               };
          */
@@ -161,32 +159,32 @@ var AllJoyn = {
               callMethod: function(callMethodSuccess, callMethodError, destination, path, indexList, inParameterType, parameters, outParameterType) {
                 var signature = getSignature(indexList, registeredObjects);
                 var wrappedSuccessCallback = wrapMsgInfoReceivingCallback(callMethodSuccess);
-                exec(wrappedSuccessCallback, callMethodError, "AllJoyn", "invokeMember", [sessionId, destination, signature, path, indexList, inParameterType, parameters, outParameterType]);
+                exec(wrappedSuccessCallback, callMethodError, 'AllJoyn', 'invokeMember', [sessionId, destination, signature, path, indexList, inParameterType, parameters, outParameterType]);
               },
               sendSignal: function(sendSignalSuccess, sendSignalError, destination, path, indexList, inParameterType, parameters) {
                 var signature = getSignature(indexList, registeredObjects);
-                exec(sendSignalSuccess, sendSignalError, "AllJoyn", "invokeMember", [sessionId, destination, signature, path, indexList, inParameterType, parameters]);
+                exec(sendSignalSuccess, sendSignalError, 'AllJoyn', 'invokeMember', [sessionId, destination, signature, path, indexList, inParameterType, parameters]);
               },
               leave: function(leaveSuccess, leaveError) {
-                exec(leaveSuccess, leaveError, "AllJoyn", "leaveSession", [sessionId]);
+                exec(leaveSuccess, leaveError, 'AllJoyn', 'leaveSession', [sessionId]);
               }
             };
             success(session);
           };
           var wrappedSuccessCallback = wrapMsgInfoReceivingCallback(successCallback);
-          exec(wrappedSuccessCallback, error, "AllJoyn", "joinSession", [service]);
+          exec(wrappedSuccessCallback, error, 'AllJoyn', 'joinSession', [service]);
         },
         sendSignal: function(sendSignalSuccess, sendSignalError, indexList, inParameterType, parameters) {
           var signature = getSignature(indexList, registeredObjects);
-          exec(sendSignalSuccess, sendSignalError, "AllJoyn", "invokeMember", [null, null, signature, null, indexList, inParameterType, parameters]);
+          exec(sendSignalSuccess, sendSignalError, 'AllJoyn', 'invokeMember', [null, null, signature, null, indexList, inParameterType, parameters]);
         }
       };
 
       var acceptSessionListener = function(messageBody, messagePointer, doneCallback) {
         var getClass = {}.toString;
         var responseCallback = function(response) {
-          exec(function() {}, function() {}, "AllJoyn", "replyAcceptSession", [messagePointer, response]);
-          if (doneCallback && getClass.call(doneCallback) == '[object Function]') {
+          exec(function() {}, function() {}, 'AllJoyn', 'replyAcceptSession', [messagePointer, response]);
+          if (doneCallback && getClass.call(doneCallback) === '[object Function]') {
             doneCallback();
           }
         };
@@ -199,17 +197,17 @@ var AllJoyn = {
         };
         bus.acceptSessionListener(joinSessionRequest);
       };
-      exec(acceptSessionListener, function() {}, "AllJoyn", "setAcceptSessionListener", [acceptSessionListener]);
+      exec(acceptSessionListener, function() {}, 'AllJoyn', 'setAcceptSessionListener', [acceptSessionListener]);
 
       success(bus);
     };
-    exec(successCallback, error, "AllJoyn", "connect", ["", 5000]);
+    exec(successCallback, error, 'AllJoyn', 'connect', ['', 5000]);
   },
   registerObjects: function(success, error, applicationObjects, proxyObjects) {
     exec(function() {
       registeredObjects = [null, applicationObjects, proxyObjects];
       success();
-    }, error, "AllJoyn", "registerObjects", [applicationObjects, proxyObjects]);
+    }, error, 'AllJoyn', 'registerObjects', [applicationObjects, proxyObjects]);
   },
   AJ_OK: 0
 };
