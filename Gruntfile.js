@@ -16,8 +16,7 @@ module.exports = function (grunt) {
                 src: files
             },
             options: {
-                config: '.jscsrc',
-                esnext: true
+                config: '.jscsrc'
             }
         }
     });
