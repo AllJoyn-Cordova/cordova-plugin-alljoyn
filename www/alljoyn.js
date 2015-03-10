@@ -183,10 +183,11 @@ var AllJoyn = {
       var acceptSessionListener = function(messageBody, messagePointer, doneCallback) {
         var getClass = {}.toString;
         var responseCallback = function(response) {
-          exec(function() {}, function() {}, 'AllJoyn', 'replyAcceptSession', [messagePointer, response]);
-          if (doneCallback && getClass.call(doneCallback) === '[object Function]') {
-            doneCallback();
-          }
+          exec(function() {
+            if (doneCallback && getClass.call(doneCallback) === '[object Function]') {
+              doneCallback(messagePointer);
+            }
+          }, function() {}, 'AllJoyn', 'replyAcceptSession', [messagePointer, response]);
         };
 
         var joinSessionRequest = {

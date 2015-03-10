@@ -57,53 +57,61 @@ var messageHandler = (function() {
           var receivedMessageId = messageObject.msgId;
           // Check if we have listeners for this message id
           if (messageListeners[receivedMessageId]) {
-            // Pass the value to listeners
             var callbacks = messageListeners[receivedMessageId];
-            for (var i = 0; i < callbacks.length; i++) {
-              var signature = callbacks[i][0];
-              var response = null;
-              // Unmarshal the message arguments
-              AllJoynWinRTComponent.AllJoyn.aj_UnmarshalArgsWithDelegate(aj_message, signature, function(unmarshalArgsStatus, messageArgs) {
-                if (unmarshalArgsStatus === AllJoynWinRTComponent.AJ_Status.aj_OK) {
-                  console.log('Unmarshaling of arguments from message with id ' + receivedMessageId + ' succeeded');
+            // It is expected that the signature is the same for a single message id
+            // and here it is picked from the firstly registered callback
+            var signature = callbacks[0][0];
+            var response = null;
+            // Unmarshal the message arguments
+            AllJoynWinRTComponent.AllJoyn.aj_UnmarshalArgsWithDelegate(aj_message, signature, function(unmarshalArgsStatus, messageArgs) {
+              if (unmarshalArgsStatus === AllJoynWinRTComponent.AJ_Status.aj_OK) {
+                console.log('Unmarshaling of arguments from message with id ' + receivedMessageId + ' succeeded');
 
-                  // The messageArgs is an object array created in the Windows Runtime Component
-                  // so turn that to a JavaScript array before returning it. Since there can be
-                  // nested container types we need to do this recursively.
-
-                  var getClass = {}.toString;
-                  var convertArgs = function (itemOrCollection) {
-                    // Check for the collection type we return for containers
-                    if (getClass.call(itemOrCollection) === '[object Windows.Foundation.Collections.IObservableVector`1<Object>]') {
-                      var subArray = [];
-                      for (var j = 0; j < itemOrCollection.length; j++) {
-                        subArray.push(convertArgs(itemOrCollection[j]));
-                      }
-                      return subArray;
-                    } else {
-                        return itemOrCollection;
+                // The messageArgs is an object array created in the Windows Runtime Component
+                // so turn that to a JavaScript array before returning it. Since there can be
+                // nested container types we need to do this recursively.
+                var getClass = {}.toString;
+                var convertArgs = function (itemOrCollection) {
+                  // Check for the collection type we return for containers
+                  if (getClass.call(itemOrCollection) === '[object Windows.Foundation.Collections.IObservableVector`1<Object>]') {
+                    var subArray = [];
+                    for (var j = 0; j < itemOrCollection.length; j++) {
+                      subArray.push(convertArgs(itemOrCollection[j]));
                     }
-                  };
-                  response = convertArgs(messageArgs);
-                } else {
-                  console.log('Unmarshaling of arguments from message with id ' + receivedMessageId + ' failed with status ' + unmarshalArgsStatus);
-                }
+                    return subArray;
+                  } else {
+                      return itemOrCollection;
+                  }
+                };
+                response = convertArgs(messageArgs);
+              } else {
+                console.log('Unmarshaling of arguments from message with id ' + receivedMessageId + ' failed with status ' + unmarshalArgsStatus);
+              }
 
-                if (receivedMessageId === AllJoynWinRTComponent.AJ_Std.aj_Method_Accept_Session) {
-                  callbacks[i][1](messageObject, response, aj_message, function() {
-                    // When request handled, close message and continue with the handler loop
-                    AllJoynWinRTComponent.AllJoyn.aj_CloseMsg(aj_message);
-                    messageHandler.start(busAttachment);
-                  });
-                  // Stop the message loop until accept session request is handled
-                  messageHandler.stop();
-                  return;
-                } else {
-                  callbacks[i][1](messageObject, response);
-                  AllJoynWinRTComponent.AllJoyn.aj_CloseMsg(aj_message);
+              if (receivedMessageId === AllJoynWinRTComponent.AJ_Std.aj_Method_Accept_Session) {
+                if (callbacks.length > 1) {
+                  console.log('It is unexpected to have more than one accept session handler!');
                 }
-              });
-            }
+                // Stop the message loop until accept session request is handled
+                messageHandler.stop();
+                callbacks[0][1](messageObject, response, aj_message, function(messagePointer) {
+                  // When request handled, close message and continue with the handler loop
+                  AllJoynWinRTComponent.AllJoyn.aj_CloseMsg(messagePointer);
+                  messageHandler.start(busAttachment);
+                });
+                return;
+              }
+
+              // Pass the value to all added listeners
+              for (var i = 0; i < callbacks.length; i++) {
+                if (callbacks[i][0] !== signature) {
+                  console.log('It is unexpected to have a handler with different signature for a single message id!');
+                }
+                callbacks[i][1](messageObject, response);
+              }
+
+              AllJoynWinRTComponent.AllJoyn.aj_CloseMsg(aj_message);
+            });
           } else {
             console.log('Message with id ' + receivedMessageId + ' passed to default handler');
             AllJoynWinRTComponent.AllJoyn.aj_BusHandleBusMessage(aj_message);
@@ -471,6 +479,8 @@ cordova.commandProxy.add('AllJoyn', {
     } else {
        AllJoynWinRTComponent.AllJoyn.aj_BusReplyAcceptSession(messagePointer, 0);
     }
+
+    success();
   },
   setAcceptSessionListener: function(success, error, parameters) {
     var acceptSessionListener = parameters[0];
