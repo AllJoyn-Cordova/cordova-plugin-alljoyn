@@ -1,5 +1,7 @@
 language: objective-c
 install:
+  - npm install -g grunt-cli
   - npm install
 script:
+  - grunt test
   - npm test
