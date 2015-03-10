@@ -59,7 +59,7 @@ var messageHandler = (function() {
           if (messageListeners[receivedMessageId]) {
             // Pass the value to listeners
             var callbacks = messageListeners[receivedMessageId];
-            for (var i = 0; i < callbacks.length; i += 1) {
+            for (var i = 0; i < callbacks.length; i++) {
               var signature = callbacks[i][0];
               var response = null;
               // Unmarshal the message arguments
@@ -76,7 +76,7 @@ var messageHandler = (function() {
                     // Check for the collection type we return for containers
                     if (getClass.call(itemOrCollection) === '[object Windows.Foundation.Collections.IObservableVector`1<Object>]') {
                       var subArray = [];
-                      for (var j = 0; j < itemOrCollection.length; j += 1) {
+                      for (var j = 0; j < itemOrCollection.length; j++) {
                         subArray.push(convertArgs(itemOrCollection[j]));
                       }
                       return subArray;
@@ -194,7 +194,7 @@ cordova.commandProxy.add('AllJoyn', {
         return [null];
       }
       var allJoynObjects = [];
-      for (var i = 0; i < objects.length; i += 1) {
+      for (var i = 0; i < objects.length; i++) {
         if (objects[i] === null) {
           allJoynObjects.push(null);
           break;
@@ -202,7 +202,7 @@ cordova.commandProxy.add('AllJoyn', {
         var allJoynObject = new AllJoynWinRTComponent.AJ_Object();
         allJoynObject.path = objects[i].path;
         var interfaces = objects[i].interfaces;
-        for (var j = 0; j < interfaces.length; j += 1) {
+        for (var j = 0; j < interfaces.length; j++) {
           var interface = interfaces[j];
           if (interface === null) {
             break;
