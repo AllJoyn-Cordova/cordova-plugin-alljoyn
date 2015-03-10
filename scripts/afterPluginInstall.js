@@ -5,5 +5,5 @@ var fs = require('fs');
 var exec = require('child_process').exec;
 
 module.exports = function (context) {
-	console.log('afterPluginInstall.js running.');
+    console.log('afterPluginInstall.js running.');
 };
