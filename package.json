@@ -10,12 +10,17 @@
         "test": "node tests/run.js"
     },
     "devDependencies": {
-        "cordova": "*",
-        "cordova-parametic": "vjrantal/cordova-paramedic"
+        "cordova": "^4.3.0",
+        "cordova-parametic": "vjrantal/cordova-paramedic",
+        "grunt": "^0.4.5",
+        "grunt-jscodesniffer": "^0.1.10",
+        "grunt-contrib-jshint": "^0.10.0",
+        "grunt-jscs": "^1.5.0",
+        "load-grunt-tasks": "^1.0.0"
     },
     "optionalDependencies": {
       "alljoyn": "nkcfan/alljoyn#40d9392b1f0f227e9bcb06e07b71bb518ce3f144",
-      "ios-sim": "*",
-      "ios-deploy": "*"
+      "ios-sim": "^3.1.1",
+      "ios-deploy": "^1.4.0"
     }
 }
