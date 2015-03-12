@@ -66,13 +66,18 @@
     <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">
         <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     </ImportGroup>
+    <PropertyGroup Label="UserMacros" />
     <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+        <GenerateManifest>false</GenerateManifest>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+        <GenerateManifest>false</GenerateManifest>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
+        <GenerateManifest>false</GenerateManifest>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">
+        <GenerateManifest>false</GenerateManifest>
     </PropertyGroup>
     <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
         <ClCompile>
@@ -80,28 +85,31 @@
             <PreprocessorDefinitions>_WINRT_DLL;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;AJ_DEBUG_RESTRICT=AJ_DEBUG_ALL</PreprocessorDefinitions>
             <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
             <PrecompiledHeaderOutputFile>$(IntDir)pch.pch</PrecompiledHeaderOutputFile>
+            <AdditionalUsingDirectories>$(WindowsSDK_WindowsMetadata);$(AdditionalUsingDirectories)</AdditionalUsingDirectories>
             <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
-            <SDLCheck>true</SDLCheck>
-            <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(MSBuildThisFileDirectory)..\target\winrt\;$(MSBuildThisFileDirectory);$(MSBuildThisFileDirectory)..\..\ajtcl\inc\;$(MSBuildThisFileDirectory)..\..\ajtcl\bsp\;$(MSBuildThisFileDirectory)..\..\ajtcl\external\sha2\;$(MSBuildThisFileDirectory)..\..\ajtcl\malloc\</AdditionalIncludeDirectories>
+            <DisableSpecificWarnings>28204</DisableSpecificWarnings>
+            <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(MSBuildThisFileDirectory);$(MSBuildThisFileDirectory)..\target\winrt\;$(MSBuildThisFileDirectory)..\..\ajtcl\bsp\;$(MSBuildThisFileDirectory)..\..\ajtcl\external\sha2\;$(MSBuildThisFileDirectory)..\..\ajtcl\malloc\;$(MSBuildThisFileDirectory)..\..\ajtcl\inc\</AdditionalIncludeDirectories>
         </ClCompile>
         <Link>
             <SubSystem>Console</SubSystem>
+            <AdditionalDependencies>runtimeobject.lib;%(AdditionalDependencies);</AdditionalDependencies>
             <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
-            <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
         </Link>
     </ItemDefinitionGroup>
     <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
         <ClCompile>
             <PrecompiledHeader>NotUsing</PrecompiledHeader>
-            <PreprocessorDefinitions>_WINRT_DLL;NDEBUG;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;</PreprocessorDefinitions>
+            <PreprocessorDefinitions>_WINRT_DLL;NDEBUG;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS</PreprocessorDefinitions>
             <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
             <PrecompiledHeaderOutputFile>$(IntDir)pch.pch</PrecompiledHeaderOutputFile>
+            <AdditionalUsingDirectories>$(WindowsSDK_WindowsMetadata);$(AdditionalUsingDirectories)</AdditionalUsingDirectories>
             <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
-            <SDLCheck>true</SDLCheck>
-            <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(MSBuildThisFileDirectory)..\target\winrt\;$(MSBuildThisFileDirectory);$(MSBuildThisFileDirectory)..\..\ajtcl\inc\;$(MSBuildThisFileDirectory)..\..\ajtcl\bsp\;$(MSBuildThisFileDirectory)..\..\ajtcl\external\sha2\;$(MSBuildThisFileDirectory)..\..\ajtcl\malloc\</AdditionalIncludeDirectories>
+            <DisableSpecificWarnings>28204</DisableSpecificWarnings>
+            <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(MSBuildThisFileDirectory);$(MSBuildThisFileDirectory)..\target\winrt\;$(MSBuildThisFileDirectory)..\..\ajtcl\inc\;$(MSBuildThisFileDirectory)..\..\ajtcl\bsp\;$(MSBuildThisFileDirectory)..\..\ajtcl\external\sha2\;$(MSBuildThisFileDirectory)..\..\ajtcl\malloc\</AdditionalIncludeDirectories>
         </ClCompile>
         <Link>
             <SubSystem>Console</SubSystem>
+            <AdditionalDependencies>runtimeobject.lib;%(AdditionalDependencies)</AdditionalDependencies>
             <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
         </Link>
     </ItemDefinitionGroup>
@@ -111,27 +119,31 @@
             <PreprocessorDefinitions>_WINRT_DLL;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;AJ_DEBUG_RESTRICT=AJ_DEBUG_ALL</PreprocessorDefinitions>
             <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
             <PrecompiledHeaderOutputFile>$(IntDir)pch.pch</PrecompiledHeaderOutputFile>
+            <AdditionalUsingDirectories>$(WindowsSDK_WindowsMetadata);$(AdditionalUsingDirectories)</AdditionalUsingDirectories>
             <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
-            <SDLCheck>true</SDLCheck>
-            <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(MSBuildThisFileDirectory)..\target\winrt\;$(MSBuildThisFileDirectory);$(MSBuildThisFileDirectory)..\..\ajtcl\inc\;$(MSBuildThisFileDirectory)..\..\ajtcl\bsp\;$(MSBuildThisFileDirectory)..\..\ajtcl\external\sha2\;$(MSBuildThisFileDirectory)..\..\ajtcl\malloc\</AdditionalIncludeDirectories>
+            <DisableSpecificWarnings>28204</DisableSpecificWarnings>
+            <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(MSBuildThisFileDirectory);$(MSBuildThisFileDirectory)..\target\winrt\;$(MSBuildThisFileDirectory)..\..\ajtcl\bsp\;$(MSBuildThisFileDirectory)..\..\ajtcl\external\sha2\;$(MSBuildThisFileDirectory)..\..\ajtcl\malloc\;$(MSBuildThisFileDirectory)..\..\ajtcl\inc\</AdditionalIncludeDirectories>
         </ClCompile>
         <Link>
             <SubSystem>Console</SubSystem>
+            <AdditionalDependencies>runtimeobject.lib;%(AdditionalDependencies);</AdditionalDependencies>
             <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
         </Link>
     </ItemDefinitionGroup>
     <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">
         <ClCompile>
             <PrecompiledHeader>NotUsing</PrecompiledHeader>
-            <PreprocessorDefinitions>_WINRT_DLL;NDEBUG;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;</PreprocessorDefinitions>
+            <PreprocessorDefinitions>_WINRT_DLL;NDEBUG;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS</PreprocessorDefinitions>
             <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
             <PrecompiledHeaderOutputFile>$(IntDir)pch.pch</PrecompiledHeaderOutputFile>
+            <AdditionalUsingDirectories>$(WindowsSDK_WindowsMetadata);$(AdditionalUsingDirectories)</AdditionalUsingDirectories>
             <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
-            <SDLCheck>true</SDLCheck>
-            <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(MSBuildThisFileDirectory)..\target\winrt\;$(MSBuildThisFileDirectory);$(MSBuildThisFileDirectory)..\..\ajtcl\inc\;$(MSBuildThisFileDirectory)..\..\ajtcl\bsp\;$(MSBuildThisFileDirectory)..\..\ajtcl\external\sha2\;$(MSBuildThisFileDirectory)..\..\ajtcl\malloc\</AdditionalIncludeDirectories>
+            <DisableSpecificWarnings>28204</DisableSpecificWarnings>
+            <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(MSBuildThisFileDirectory);$(MSBuildThisFileDirectory)..\target\winrt\;$(MSBuildThisFileDirectory)..\..\ajtcl\bsp\;$(MSBuildThisFileDirectory)..\..\ajtcl\external\sha2\;$(MSBuildThisFileDirectory)..\..\ajtcl\malloc\;$(MSBuildThisFileDirectory)..\..\ajtcl\inc\</AdditionalIncludeDirectories>
         </ClCompile>
         <Link>
             <SubSystem>Console</SubSystem>
+            <AdditionalDependencies>runtimeobject.lib;%(AdditionalDependencies)</AdditionalDependencies>
             <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
         </Link>
     </ItemDefinitionGroup>
