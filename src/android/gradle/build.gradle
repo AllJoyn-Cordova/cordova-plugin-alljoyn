@@ -18,7 +18,7 @@ allprojects
         jcenter()
     }
 	
-	defaultTasks 'compileArmReleaseNdk', 'compileArmDebugNdk', 'compileArmv7ReleaseNdk', 'compileArmv7DebugNdk', 'compilex86ReleaseNdk', 'compilex86DebugNdk', 'copyLibs'
+	defaultTasks 'compileArmReleaseNdk', 'compileArmv7ReleaseNdk', 'compilex86ReleaseNdk', 'copyLibs'
 }
 
 apply plugin: 'com.android.application'

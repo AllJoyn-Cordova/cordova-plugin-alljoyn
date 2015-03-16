@@ -24,7 +24,7 @@
 		<hook type="before_build" src="scripts/androidBeforeBuild.js" />
 
         <config-file target="res/xml/config.xml" parent="/*">
-            <feature name="AllJoynCordova">
+            <feature name="AllJoyn">
                 <param name="android-package" value="org.allseen.alljoyn.AllJoynCordova"/>
                 <param name="onload" value="true"/>
             </feature>
