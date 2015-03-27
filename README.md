@@ -4,7 +4,8 @@ cordova-plugin-alljoyn [![Build Status](https://travis-ci.org/AllJoyn-Cordova/co
 A Cordova plugin to expose the [AllJoyn](https://allseenalliance.org/alljoyn-framework-tutorial) Thin Client (AJTCL 14.12) to cross platform applications written in Javascript.
 
 Purpose
---------------------
+-------
+
 To provide a plugin which allows using the AllJoyn Thin Client library across all mobile platforms without requiring the user to deal with implementing and compiling the native code for each operating system.
 
 Current Platforms:
@@ -14,6 +15,12 @@ Current Platforms:
 * Android (in-progress)
 
 An effort has been made to expose as many of the AJTCL features to Javascript as possible, while maintaining a clean Javascript API.  Features are prioritized based on which scenarios they unblock.  
+
+Resources
+---------
+
+Various explanatory blog posts can be found here:
+http://www.stefangordon.com/introducing-the-alljoyn-plugin-for-cordova/
 
 For Plugin Developers / Contributors
 --------------------
@@ -25,7 +32,50 @@ $ git clone https://github.com/AllJoyn-Cordova/ajtcl.git src/ajtcl
 
 For plugin users, above is taken care of by a hook run after plugin is added with Cordova scripts.
 
-Running tests
+Using The Plugin On Windows
+---------------------------
+
+```
+$ cd /path/to/your/cordova/app
+$ cordova add [/path/to/plugin or <url to this git repo> or org.allseen.alljoyn]
+$ cordova platform add windows
+```
+
+Running With Cordova Scripts:
+
+```
+// To run on Windows Phone 8.1 emulator
+$ cordova run windows --emulator --archs="x86" -- -phone
+// Running on Windows Phone 8.1 device
+$ cordova run windows --device --archs="arm" -- -phone
+// To run on desktop (current default is Windows 8.0 build)
+$ cordova run windows --device --archs="x64" -- -win
+```
+
+Alternative for running with Cordova scripts is to open the solution file generated after "cordova platform add windows"-command in Visual Studio and running the wanted app project. In this case, these is a need to manually select the correct architecture from build configuration.
+
+Building For Android
+--------------------
+
+In addition to the Android SDK, the NDK is required. See https://developer.android.com/tools/sdk/ndk/index.html for installation instructions.
+
+The environment variables ANDROID_HOME and ANDROID_NDK_HOME must be set to the point to the locations where the Android SDK and NDK are installed.
+
+There are some external dependencies when building the plugin for the Android platform. When building on a Mac, one of the easiest ways to install the dependencies is via Homebrew http://brew.sh/ with following command:
+
+```
+$ brew install ant gradle swig
+```
+
+After dependencies are met, the steps to build and run are something like:
+
+```
+$ cordova platform add android
+$ cordova build android
+$ cordova run android
+```
+
+Running Tests
 -------------
 
 The iOS tests can be run locally with:
@@ -56,30 +106,3 @@ Above runs the tests on a Windows Phone emulator. To run on real device, make su
 ```
 $ cordova-paramedic --platform windows --plugin %cd% --tempProjectPath %tmp%\testApp --architecture=arm --phone=true --device=true
 ```
-
-Using the plugin for Windows platforms
---------------------------------------
-
-```
-$ cd /path/to/your/cordova/app
-$ cordova add [/path/to/plugin or <url to this git repo> or org.allseen.alljoyn]
-$ cordova platform add windows
-```
-
-Running with Cordova scripts:
-
-```
-// To run on Windows Phone 8.1 emulator
-$ cordova run windows --emulator --archs="x86" -- -phone
-// Running on Windows Phone 8.1 device
-$ cordova run windows --device --archs="arm" -- -phone
-// To run on desktop (current default is Windows 8.0 build)
-$ cordova run windows --device --archs="x64" -- -win
-```
-
-Alternative for running with Cordova scripts is to open the solution file generated after "cordova platform add windows"-command in Visual Studio and running the wanted app project. In this case, these is a need to manually select the correct architecture from build configuration.
-
-Resources
----------
-Various explanatory blog posts can be found here:
-http://www.stefangordon.com/introducing-the-alljoyn-plugin-for-cordova/
