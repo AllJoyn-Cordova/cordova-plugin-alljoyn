@@ -48,7 +48,7 @@ void AJ_Sleep(uint32_t time)
 
 }
 
-//#ifndef NDEBUG
+#ifndef NDEBUG
 
 /*
  * This is not intended, nor required to be particularly efficient.  If you want
@@ -95,7 +95,7 @@ AJ_Status _AJ_GetDebugTime(AJ_Time* timer)
     }
     return status;
 }
-//#endif
+#endif
 
 uint32_t AJ_GetElapsedTime(AJ_Time* timer, uint8_t cumulative)
 {
