@@ -38,6 +38,7 @@ android
         {
             moduleName "alljoyn"
             ldLibs "log"
+			cFlags "-DNDEBUG"		
         }
 
         testApplicationId "org.allseen.alljoyn.tests"
