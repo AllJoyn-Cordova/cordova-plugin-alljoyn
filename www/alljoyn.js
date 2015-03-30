@@ -15,16 +15,22 @@ var getSignalRuleString = function (member, interface) {
     return 'type=\'signal\',member=\'' + member + '\',interface=\'' + interface + '\'';
 };
 
+var buildMsgFromMsgArguments = function (msgInfoAndArguments) {
+    var msg = {
+        arguments: msgInfoAndArguments[1]
+    };
+    var msgInfo = msgInfoAndArguments[0];
+    for (var msgInfoProp in msgInfo) {
+        if (msgInfo.hasOwnProperty(msgInfoProp)) {
+            msg[msgInfoProp] = msgInfo[msgInfoProp];
+        }
+    }
+    return msg;
+};
+
 var wrapMsgInfoReceivingCallback = function (callback) {
     return function (msgInfoAndArguments) {
-        var msg = {};
-        msg.arguments = msgInfoAndArguments[1];
-        var msgInfo = msgInfoAndArguments[0];
-        for (var msgInfoProp in msgInfo) {
-            if (msgInfo.hasOwnProperty(msgInfoProp)) {
-                msg[msgInfoProp] = msgInfo[msgInfoProp];
-            }
-        }
+        var msg = buildMsgFromMsgArguments(msgInfoAndArguments);
         console.log('returning msg: ' + JSON.stringify(msg));
         callback(msg);
     };
@@ -42,6 +48,36 @@ var AllJoyn = {
                     // can't be called multiple times.
                     var wrappedListener = wrapMsgInfoReceivingCallback(listener);
                     exec(wrappedListener, function () {}, 'AllJoyn', 'addListener', [indexList, responseType, wrappedListener]);
+                },
+                addListenerForReply: function (indexList, responseType, listener) {
+                    // Called when we get a message that matches the index
+                    // messagePointer needs to be sent back to the to open the message loop back up
+                    // doneCallback is used in WinRT implementation
+                    var listenerForReply = function (messageBody, messagePointer, doneCallback) {
+                        var getClass = {}.toString;
+                        var replyCompleted = function () {
+                            if (doneCallback && getClass.call(doneCallback) === '[object Function]') {
+                                doneCallback(messagePointer);
+                            }
+                        };
+                        var msgForReply = {
+                            msg: buildMsgFromMsgArguments(messageBody),
+                            replySuccess: function (parameterTypes, parameters) {
+                                exec(
+                                    replyCompleted,
+                                    function () {}, 'AllJoyn', 'sendSuccessReply', [messagePointer, parameterTypes, parameters]);
+                            },
+                            replyError: function (errorMessage) {
+                                exec(
+                                    replyCompleted,
+                                    function () {}, 'AllJoyn', 'sendErrorReply', [messagePointer, errorMessage]);
+                            }
+                        };
+
+                        listener(msgForReply);
+                    };
+
+                    exec(listenerForReply, function () {}, 'AllJoyn', 'addListenerForReply', [indexList, responseType, listenerForReply]);
                 },
                 // joinSessionRequest = {
                 //   port: 12,
