@@ -31,7 +31,6 @@ var buildMsgFromMsgArguments = function (msgInfoAndArguments) {
 var wrapMsgInfoReceivingCallback = function (callback) {
     return function (msgInfoAndArguments) {
         var msg = buildMsgFromMsgArguments(msgInfoAndArguments);
-        console.log('returning msg: ' + JSON.stringify(msg));
         callback(msg);
     };
 };
@@ -61,7 +60,7 @@ var AllJoyn = {
                             }
                         };
                         var msgForReply = {
-                            msg: buildMsgFromMsgArguments(messageBody),
+                            message: buildMsgFromMsgArguments(messageBody),
                             replySuccess: function (parameterTypes, parameters) {
                                 exec(
                                     replyCompleted,
