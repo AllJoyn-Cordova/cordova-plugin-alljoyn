@@ -1,0 +1,130 @@
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+buildscript
+{
+    repositories
+    {
+        jcenter()
+    }
+    dependencies
+    {
+        classpath 'com.android.tools.build:gradle:1.0.0+'
+    }
+}
+
+allprojects
+{
+    repositories
+    {
+        jcenter()
+    }
+	
+	defaultTasks 'compileArmReleaseNdk', 'compileArmv7ReleaseNdk', 'compilex86ReleaseNdk', 'copyLibs'
+}
+
+apply plugin: 'com.android.application'
+
+android 
+{
+    compileSdkVersion 19
+    buildToolsVersion "20.0.0"
+
+    defaultConfig 
+	{
+        applicationId "org.allseen.alljoyn"
+        minSdkVersion 17
+        targetSdkVersion 19
+
+        ndk
+        {
+            moduleName "alljoyn"
+            ldLibs "log"
+			cFlags "-DNDEBUG"		
+        }
+
+        testApplicationId "org.allseen.alljoyn.tests"
+        testInstrumentationRunner "android.test.InstrumentationTestRunner"
+    }
+	
+	productFlavors
+	{
+		arm 
+		{
+			ndk 
+			{
+				abiFilters "armeabi"
+			}
+		}
+		armv7 
+		{
+			ndk 
+			{
+				abiFilters "armeabi-v7a"
+			}
+		}		
+		x86 
+		{
+			ndk 
+			{
+				abiFilter "x86"
+			}
+		}
+    }
+
+    buildTypes 
+	{
+        release 
+		{
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.txt'
+        }
+    }
+}
+
+// http://www.sureshjoshi.com/mobile/android-ndk-in-android-studio-with-swig
+// For this to work, it's assumed SWIG is installed
+// TODO: This only works when called from Command Line (gradlew runSwig)
+task runSwig(type: Exec) {
+	String osName = System.getProperty("os.name").toLowerCase();
+	
+	if (osName.contains("windows")) 
+	{
+		workingDir '/src/main/jni' // This implicitly starts from $(projectDir) evidently
+		commandLine 'cmd', '/c', 'swig'
+		args '-DNDEBUG', '-java', '-package', 'org.allseen.alljoyn', '../../../swig/alljoyn.i'
+	}
+	else
+	{
+		workingDir 'src/main/jni' // This implicitly starts from $(projectDir) evidently
+		commandLine 'swig'
+		args '-DNDEBUG', '-java', '-package', 'org.allseen.alljoyn', '../../../swig/alljoyn.i'
+	}
+}
+
+task copyGenCSrc(type: Copy) {
+    from 'swig'
+    into 'src/main/jni'
+    include 'alljoyn_wrap.c'
+	dependsOn runSwig
+}
+
+task copyGenJavaSrc(type: Copy) {
+    from 'swig'
+    into '../src/org/allseen/alljoyn'
+    include '*.java'
+	dependsOn runSwig
+}
+
+task copyGenSrc {
+	dependsOn copyGenCSrc, copyGenJavaSrc
+}
+
+task copyLibs(type: Copy) {
+    from 'build/intermediates/ndk/arm/release/lib'
+	from 'build/intermediates/ndk/armv7/release/lib'
+	from 'build/intermediates/ndk/x86/release/lib'
+    into '../libs'
+}
+
+gradle.projectsEvaluated {
+    preBuild.dependsOn(copyGenSrc)
+}
