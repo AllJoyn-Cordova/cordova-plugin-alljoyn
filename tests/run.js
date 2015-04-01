@@ -1,13 +1,22 @@
 #!/usr/bin/env node
 
-var alljoyn = require('alljoyn');
+var platform = process.platform;
+var cordovaPlatformMapping = {
+    darwin: 'ios',
+    linux: 'android',
+    win32: 'windows'
+};
+var cordovaPlatform = cordovaPlatformMapping[platform];
+
+// Load alljoyn only on Mac and Linux since it doesn't build on Windows
+var alljoyn = (platform === 'darwin' || platform === 'linux') && require('alljoyn') || null;
 var path = require('path');
 var os = require('os');
 var spawn = require('child_process').spawn;
 
 // Run AllJoun router so that the test app can
 // make a connection
-(function () {
+var runRouter = function () {
     var bus = alljoyn.BusAttachment('dummyBus');
 
     var interface = alljoyn.InterfaceDescription();
@@ -27,24 +36,35 @@ var spawn = require('child_process').spawn;
 
     bus.start();
     bus.connect();
-})();
+};
+
+if (platform === 'darwin' || platform === 'linux') {
+    runRouter();
+}
 
 var temporaryDirectory = path.join(os.tmpdir(), 'testApp');
 var pluginDirectory = path.join(__dirname, '..');
 
-var runProcess = spawn(
-    'node',
-    [
-        'node_modules/cordova-paramedic/main.js',
-        '--platform',
-        'ios',
-        '--plugin',
-        pluginDirectory,
-        '--tempProjectPath',
-        temporaryDirectory,
-        '--removeTempProject=true'
-    ]
-);
+var parameticArguments = [
+    'node_modules/cordova-paramedic/main.js',
+    '--platform',
+    cordovaPlatform,
+    '--plugin',
+    pluginDirectory,
+    '--tempProjectPath',
+    temporaryDirectory,
+    '--removeTempProject=true'
+];
+
+if (platform === 'win32' || platform === 'linux') {
+    parameticArguments.push('--buildOnly=true');
+}
+
+if (platform === 'win32') {
+    parameticArguments.push('--architecture=x86');
+}
+
+var runProcess = spawn('node', parameticArguments);
 
 runProcess.stdout.on('data', function (data) {
     console.log('' + data);
