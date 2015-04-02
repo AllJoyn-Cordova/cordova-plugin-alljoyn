@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <ppltasks.h>
 
@@ -420,6 +420,10 @@ namespace AllJoynWinRTComponent
 	{
 		uint32_t msgId;
 		AJ_MsgHeader hdr;
+		String^ objPath;
+		uint32_t replySerial;
+		String^ member;
+		String^ error;
 		String^ iface;
 		String^ sender;
 		String^ destination;
@@ -545,6 +549,7 @@ namespace AllJoynWinRTComponent
 		static AJ_Status AJ_BusAuthenticatePeer(AJ_BusAttachment^ bus, String^ peerBusName, AJ_PeerAuthenticateCallback^ pwdCallback);
 		static AJ_Status AJ_BusReplyAcceptSession(AJ_Message^ msg, uint32_t accept);
 		static AJ_Status AJ_MarshalReplyMsg(AJ_Message^ methodCall, AJ_Message^ reply);
+		static AJ_Status AJ_MarshalErrorMsg(AJ_Message^ methodCall, AJ_Message^ reply, String^ error);
 		static AJ_Status AJ_MarshalArg(AJ_Message^ msg, AJ_Arg^ arg);
 		static void AJ_InitArg(AJ_Arg^ arg, uint8_t typeId, uint8_t flags, Object^ val, size_t len);
 		static AJ_Status AJ_MarshalPropertyArgs(AJ_Message^ msg, uint32_t propId);

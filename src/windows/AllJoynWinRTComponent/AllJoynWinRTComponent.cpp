@@ -1,4 +1,4 @@
-﻿#include "pch.h"
+#include "pch.h"
 
 #include "AllJoynWinRTComponent.h"
 #include "aj_init.h"
@@ -630,251 +630,6 @@ AllJoynWinRTComponent::AJ_Status AllJoynWinRTComponent::AllJoyn::AJ_MarshalSigna
 }
 
 
-Array<Object^>^ AllJoynWinRTComponent::AllJoyn::AJ_UnmarshalArgs(AJ_Message^ msg, String^ signature)
-{
-	if (signature->Length() == 0)
-	{
-		return nullptr;
-	}
-
-	Array<Object^>^ args = ref new Array<Object^>(signature->Length() + 1);
-	::AJ_Status _status = ::AJ_Status::AJ_ERR_INVALID;
-	int nArgsLen = 1;
-
-	PLSTOMBS(signature, _signature);
-
-	for (int i = 0; i < signature->Length(); i++)
-	{
-		::AJ_Arg arg;
-		::AJ_Arg container;
-		uint8_t typeId = (uint8_t)_signature[i];
-		args[nArgsLen] = nullptr;
-
-		if (!AJ_IsBasicType(typeId))
-		{
-			if ((typeId == AJ_ARG_STRUCT) || (typeId == AJ_ARG_DICT_ENTRY)) 
-			{
-				_status = ::AJ_UnmarshalContainer(&msg->_msg, &container, typeId);
-				if (_status != AJ_OK)
-				{
-					break;
-				}
-
-				const wchar_t* wcsSig = signature->Data();
-				String^ vsig = ref new String(wcsSig + i + 1);
-				Array<Object^>^ argsv = AllJoynWinRTComponent::AllJoyn::AJ_UnmarshalArgs(msg, vsig);
-				int nArgsvLen = argsv->Length - 1; // Skip ")" & "}"
-				_status = static_cast<::AJ_Status>((AJ_Status)argsv[0]);
-
-				if (_status == AJ_OK)
-				{
-					wcsSig += nArgsvLen;
-					uint8_t tId = (uint8_t)wcsSig[i];
-
-					if ((tId == AJ_STRUCT_CLOSE) || (tId == AJ_DICT_ENTRY_CLOSE))
-					{
-						_status = ::AJ_UnmarshalCloseContainer(&msg->_msg, &container);
-
-						if (_status != AJ_OK)
-						{
-							break;
-						}
-
-						for (int j = 1; j < nArgsvLen; j++)
-						{
-							args[nArgsLen++] = argsv[j];
-						}
-
-						// Resize array to remove containers
-						int newLen = args->Length - 2;
-						Array<Object^>^ newArgs = ref new Array<Object^>(newLen);
-
-						for (int j = 0; j < newLen; j++)
-						{
-							newArgs[j] = args[j];
-						}
-
-						args = newArgs;
-						i += nArgsvLen;
-					}
-					else
-					{
-						_status = AJ_ERR_UNMARSHAL;
-						break;
-					}
-
-					continue;
-				}
-				else
-				{
-					break;
-				}
-
-				continue;
-			}
-
-			if (typeId == AJ_ARG_ARRAY)
-			{
-				uint8_t nextTypeId = (uint8_t)_signature[i + 1];
-
-				if (AJ_IsBasicType(nextTypeId))
-				{
-					_status = ::AJ_UnmarshalArg(&msg->_msg, &arg);
-
-					if (_status != AJ_OK)
-					{
-						break;
-					}
-
-					if (SizeOfType(typeId) == 8)
-					{
-						Array<uint64_t>^ retArray = ref new Array<uint64_t>(arg.len);
-						uint64_t* ptr = (uint64_t*)(arg.val.v_data);
-
-						for (int j = 0; j < arg.len; j++)
-						{
-							retArray[j] = ptr[j];
-						}
-
-						args[nArgsLen++] = retArray;
-					}
-					else if (SizeOfType(typeId) == 4)
-					{
-						Array<uint32_t>^ retArray = ref new Array<uint32_t>(arg.len);
-						uint32_t* ptr = (uint32_t*)(arg.val.v_data);
-
-						for (int j = 0; j < arg.len; j++)
-						{
-							retArray[j] = ptr[j];
-						}
-
-						args[nArgsLen++] = retArray;
-					}
-					else if (SizeOfType(typeId) == 2)
-					{
-						Array<uint16_t>^ retArray = ref new Array<uint16_t>(arg.len);
-						uint16_t* ptr = (uint16_t*)(arg.val.v_data);
-
-						for (int j = 0; j < arg.len; j++)
-						{
-							retArray[j] = ptr[j];
-						}
-
-						args[nArgsLen++] = retArray;
-					}
-					else
-					{
-						Array<uint8_t>^ retArray = ref new Array<uint8_t>(arg.len);
-						uint8_t* ptr = (uint8_t*)(arg.val.v_data);
-
-						for (int j = 0; j < arg.len; j++)
-						{
-							retArray[j] = ptr[j];
-						}
-
-						args[nArgsLen++] = retArray;
-					}
-
-					args[nArgsLen++] = arg.len;
-					i++;
-					continue;
-				}
-			}
-
-			if ((typeId == AJ_STRUCT_CLOSE) || (typeId == AJ_DICT_ENTRY_CLOSE)) 
-			{
-				break;
-			}
-
-			if (typeId == AJ_ARG_VARIANT)
-			{
-				const char* _vsig;
-				_status = AJ_UnmarshalVariant(&msg->_msg, &_vsig);
-
-				if (_status == AJ_OK)
-				{
-					MBSTOPLS(_vsig, vsig);
-					args[nArgsLen++] = vsig;
-					int sigLen = vsig->Length();
-
-					Array<Object^>^ argsv = AllJoynWinRTComponent::AllJoyn::AJ_UnmarshalArgs(msg, vsig);
-					_status = static_cast<::AJ_Status>((AJ_Status)argsv[0]);
-
-					if (_status == AJ_OK)
-					{
-						int newLen = signature->Length() + argsv->Length;
-						Array<Object^>^ newArgs = ref new Array<Object^>(newLen);
-
-						for (int j = 1; j < nArgsLen + argsv->Length - 1; j++)
-						{
-							newArgs[j] = (j < nArgsLen) ? args[j] : argsv[j - nArgsLen + 1];
-						}
-
-						nArgsLen += argsv->Length - 1;
-						args = newArgs;
-					}
-				}
-
-				if (_status == AJ_OK)
-				{
-					continue;
-				}
-			}
-
-			AJ_ErrPrintf(("AJ_MarshalArgs(): AJ_ERR_UNEXPECTED\n"));
-			_status = AJ_ERR_UNEXPECTED;
-			break;
-		}
-		else
-		{
-			_status = ::AJ_UnmarshalArg(&msg->_msg, &arg);
-
-			if (_status != AJ_OK)
-			{
-				break;
-			}
-
-			if (AJ_IsScalarType(typeId))
-			{
-				if (SizeOfType(typeId) == 8)
-				{
-					args[nArgsLen] = static_cast<uint64_t>(*arg.val.v_uint64);
-				}
-				else if (SizeOfType(typeId) == 4)
-				{
-					args[nArgsLen] = static_cast<uint32_t>(*arg.val.v_uint32);
-				}
-				else if (SizeOfType(typeId) == 2)
-				{
-					args[nArgsLen] = static_cast<uint16_t>(*arg.val.v_uint16);
-				}
-				else
-				{
-					args[nArgsLen] = static_cast<uint8_t>(*arg.val.v_byte);
-				}
-			}
-			else
-			{
-				MBSTOPLS(arg.val.v_string, val);
-				args[nArgsLen] = val;
-			}
-		}
-
-		if (args[nArgsLen] == nullptr)
-		{
-			_status = ::AJ_Status::AJ_ERR_INVALID;
-			break;
-		}
-
-		nArgsLen++;
-	}
-
-	args[0] = static_cast<AJ_Status>(_status);
-
-	return args;
-}
-
-
 // Pointer to Javascript function
 AllJoynWinRTComponent::AJ_AuthPwdFunc^ pwdCallback;
 
@@ -930,6 +685,13 @@ AllJoynWinRTComponent::AJ_Status AllJoynWinRTComponent::AllJoyn::AJ_MarshalReply
 	return static_cast<AllJoynWinRTComponent::AJ_Status>(status);
 }
 
+AllJoynWinRTComponent::AJ_Status AllJoynWinRTComponent::AllJoyn::AJ_MarshalErrorMsg(AllJoynWinRTComponent::AJ_Message^ methodCall, AllJoynWinRTComponent::AJ_Message^ reply, String^ error)
+{
+	PLSTOMBS(error, _error);
+	::AJ_Status status = ::AJ_MarshalErrorMsg(&methodCall->_msg, &reply->_msg, _error);
+
+	return static_cast<AllJoynWinRTComponent::AJ_Status>(status);
+}
 
 AllJoynWinRTComponent::AJ_Status AllJoynWinRTComponent::AllJoyn::AJ_MarshalArg(AllJoynWinRTComponent::AJ_Message^ msg, AllJoynWinRTComponent::AJ_Arg^ arg)
 {
@@ -1380,6 +1142,19 @@ void AllJoynWinRTComponent::AllJoyn::AJ_UnmarshalArgsWithDelegate(AJ_Message^ ms
 }
 
 
+Array<Object^>^ AllJoynWinRTComponent::AllJoyn::AJ_UnmarshalArgs(AJ_Message^ msg, String^ signature)
+{
+	PLSTOMBS(signature, _signature);
+	const char* sig = _signature;
+	Vector<Object^>^ args = ref new Vector<Object^>();
+	::AJ_Status _status = UnmarshalArgs(&msg->_msg, &sig, args);
+	Array<Object^>^ returnArray = ref new Array<Object^>(2);
+	returnArray[0] = static_cast<AJ_Status>(_status);
+	returnArray[1] = args;
+	return returnArray;
+}
+
+
 std::vector<char*> AllJoynWinRTComponent::AllJoyn::GetArrayArgs(String^ strVal)
 {
 	PLSTOMBS(strVal, _strVal);
@@ -1764,6 +1539,26 @@ AllJoynWinRTComponent::_AJ_Message AllJoynWinRTComponent::AJ_Message::Get()
 		msg.signature = ref new String(signature);
 	}
 
+	// This was an uninitialized pointer when not set so ignore until needed
+	//if (_msg.objPath)
+	//{
+	//	MBSTOWCS(_msg.objPath, objPath);
+	//	msg.objPath = ref new String(objPath);
+	//}
+
+	if (_msg.member)
+	{
+		MBSTOWCS(_msg.member, member);
+		msg.member = ref new String(member);
+	}
+
+	if (_msg.error)
+	{
+		MBSTOWCS(_msg.error, error);
+		msg.error = ref new String(error);
+	}
+
+	msg.replySerial = _msg.replySerial;
 	msg.sessionId = _msg.sessionId;
 	msg.timestamp = _msg.timestamp;
 	msg.ttl = _msg.ttl;

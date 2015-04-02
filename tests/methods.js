@@ -38,6 +38,10 @@ describe('Implementing methods and replies', function () {
                 expect(true).toBe(false);
                 done();
             }, applicationObjects, proxyObjects);
+        }, function () {
+            console.log('Could not connect to an AllJoyn bus!');
+            expect(true).toBe(false);
+            done();
         });
     });
 
@@ -69,13 +73,13 @@ describe('Implementing methods and replies', function () {
                     [2, 0, 0, 0], 's', [incomingString], 's');
                 };
 
-                callDoSomething('Incoming success', function (outgoingString) {
-                    expect(outgoingString).toBe('Outgoing success');
-                    callDoSomething('Incoming error', function (outgoingString) {}, function (status) {
-                        // TODO: Check that correct error status is received
+                callDoSomething('Incoming success', function (successString) {
+                    expect(successString).toBe('Outgoing success');
+                    callDoSomething('Incoming error', function (successString) {}, function (errorString) {
+                        expect(errorString).toBe('Outgoing error');
                         done();
                     });
-                }, function (status) {});
+                }, function (errorString) {});
             }, function (status) {
                 expect(true).toBe(false);
                 done();
