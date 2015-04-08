@@ -89,7 +89,7 @@ public class AllJoynCordova extends CordovaPlugin {
 				Log.i(TAG, "AllJoyn.registerObjects: arg 0 null");
 			} else {
 				localObjects = data.getJSONArray(0);
-				for(int i = 0; i < localObjects.length(); i++) {
+				for(int i = 0; i < localObjects.length() - 1; i++) {
 					JSONObject object = localObjects.getJSONObject(i);
 					Log.i(TAG, "AllJoyn.registerObjects("+object.toString()+")");
 					if (local == null) {
@@ -109,7 +109,7 @@ public class AllJoynCordova extends CordovaPlugin {
 				Log.i(TAG, "AllJoyn.registerObjects: arg 1 null");				
 			} else {
 				remoteObjects = data.getJSONArray(1);
-				for(int i = 0; i < remoteObjects.length(); i++) {
+				for(int i = 0; i < remoteObjects.length() - 1; i++) {
 					JSONObject object = remoteObjects.getJSONObject(i);
 					Log.i(TAG, "AllJoyn.registerObjects("+object.toString()+")");
 					if (remote == null) {
