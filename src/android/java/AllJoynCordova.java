@@ -205,6 +205,32 @@ public class AllJoynCordova extends CordovaPlugin {
 				return false;
 			}
 		}		
-		return false;
-	}
+        if (action.equals("setSignalRule")) {
+            Log.i(TAG, "AllJoyn.setSignalRule");
+            AJ_Status status = AJ_Status.AJ_OK;
+            String ruleString = data.getString(0);
+            int rule = data.getInt(1);
+
+            try
+            {
+                status = alljoyn.AJ_BusSetSignalRule(bus, ruleString, rule);
+            }
+            catch (Exception e)
+            {
+                Log.i(TAG, "Exception in setSignalRule: " + e.toString());
+            }
+
+            if( status == AJ_Status.AJ_OK)
+            {
+                callbackContext.success("setSignalRule successfully!");
+                return true;
+            }
+            else
+            {
+                callbackContext.error("Error in setSignalRule: " + status.toString());
+                return false;
+            }
+        }
+        return false;
+    }
 }
