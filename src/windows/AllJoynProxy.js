@@ -58,12 +58,19 @@ var messageHandler = (function () {
                     // Check if we have listeners for this message id
                     if (messageListeners[receivedMessageId]) {
                         var callbacks = messageListeners[receivedMessageId];
+                        console.log('Found ' + callbacks.length +  ' listener(s) for message with id: ' + receivedMessageId);
+
                         // It is expected that the signature is the same for a single message id
                         // and here it is picked from the firstly registered callback
                         var signature = callbacks[0][0];
                         var response = null;
-                        // Unmarshal the message arguments
-                        AllJoynWinRTComponent.AllJoyn.aj_UnmarshalArgsWithDelegate(ajMessage, signature, function (unmarshalArgsStatus, messageArgs) {
+
+                        // Try unmarshaling only if a signature was given and the message is not an error (AJ_MSG_ERROR = 3)
+                        if (signature && messageObject.hdr.msgType !== 3) {
+                            // Unmarshal the message arguments
+                            var unmarshalReturnArray = AllJoynWinRTComponent.AllJoyn.aj_UnmarshalArgs(ajMessage, signature);
+                            var unmarshalArgsStatus = unmarshalReturnArray[0];
+                            var messageArgs = unmarshalReturnArray[1];
                             if (unmarshalArgsStatus === AllJoynWinRTComponent.AJ_Status.aj_OK) {
                                 console.log('Unmarshaling of arguments from message with id ' + receivedMessageId + ' succeeded');
 
@@ -87,36 +94,40 @@ var messageHandler = (function () {
                             } else {
                                 console.log('Unmarshaling of arguments from message with id ' + receivedMessageId + ' failed with status ' + unmarshalArgsStatus);
                             }
+                        }
 
-                            if (receivedMessageId === AllJoynWinRTComponent.AJ_Std.aj_Method_Accept_Session) {
-                                if (callbacks.length > 1) {
-                                    console.log('It is unexpected to have more than one accept session handler!');
-                                }
-                                // Stop the message loop until accept session request is handled
-                                messageHandler.stop();
-                                callbacks[0][1](messageObject, response, ajMessage, function (messagePointer) {
-                                    // When request handled, close message and continue with the handler loop
-                                    AllJoynWinRTComponent.AllJoyn.aj_CloseMsg(messagePointer);
-                                    messageHandler.start(busAttachment);
-                                });
-                                return;
+                        // If this is a blocking handler
+                        if (callbacks[0][2]) {
+                            if (callbacks.length > 1) {
+                                console.log('It is unexpected to have more than one callbacks for blocking handlers!');
                             }
+                            // Stop the message loop until accept session request is handled
+                            messageHandler.stop();
+                            callbacks[0][1](messageObject, response, ajMessage, function (messagePointer) {
+                                // When request handled, close message and continue with the handler loop
+                                console.log('Closing a blocking message with id: ' + messagePointer.get().msgId);
+                                AllJoynWinRTComponent.AllJoyn.aj_CloseMsg(messagePointer);
+                                messageHandler.start(busAttachment);
+                            });
+                            return;
+                        }
 
-                            // Pass the value to all added listeners
-                            for (var i = 0; i < callbacks.length; i++) {
-                                if (callbacks[i][0] !== signature) {
-                                    console.log('It is unexpected to have a handler with different signature for a single message id!');
-                                }
-                                callbacks[i][1](messageObject, response);
+                        AllJoynWinRTComponent.AllJoyn.aj_CloseMsg(ajMessage);
+
+                        // Pass the value to all added listeners
+                        for (var i = 0; i < callbacks.length; i++) {
+                            if (callbacks[i][0] !== signature) {
+                                console.log('It is unexpected to have a handler with different signature for a single message id!');
                             }
-
-                            AllJoynWinRTComponent.AllJoyn.aj_CloseMsg(ajMessage);
-                        });
+                            callbacks[i][1](messageObject, response);
+                        }
                     } else {
                         console.log('Message with id ' + receivedMessageId + ' passed to default handler');
                         AllJoynWinRTComponent.AllJoyn.aj_BusHandleBusMessage(ajMessage);
                         AllJoynWinRTComponent.AllJoyn.aj_CloseMsg(ajMessage);
                     }
+                } else {
+                    AllJoynWinRTComponent.AllJoyn.aj_CloseMsg(ajMessage);
                 }
                 updateInterval(status);
             });
@@ -130,12 +141,12 @@ var messageHandler = (function () {
         clearInterval(interval);
     };
 
-    messageHandler.addHandler = function (messageId, signature, callback) {
+    messageHandler.addHandler = function (messageId, signature, callback, isBlocking) {
         // Create a list of handlers for this message id if it doesn't exist yet
         if (typeof messageListeners[messageId] !== 'object') {
             messageListeners[messageId] = [];
         }
-        messageListeners[messageId].push([signature, callback]);
+        messageListeners[messageId].push([signature, callback, isBlocking]);
     };
 
     messageHandler.removeHandler = function (messageId, callback) {
@@ -452,7 +463,12 @@ cordova.commandProxy.add('AllJoyn', {
                     replyMessageId, responseType,
                     function (messageObject, messageBody) {
                         messageHandler.removeHandler(replyMessageId, this[1]);
-                        success([getMsgInfo(messageObject), messageBody]);
+                        // AJ_MSG_ERROR = 3
+                        if (messageObject.hdr.msgType === 3) {
+                            error(messageObject.error);
+                        } else {
+                            success([getMsgInfo(messageObject), messageBody]);
+                        }
                     }
                 );
             }
@@ -471,6 +487,62 @@ cordova.commandProxy.add('AllJoyn', {
                 callback([getMsgInfo(messageObject), messageBody]);
             }
         );
+    },
+    addListenerForReply: function (success, error, parameters) {
+        var indexList = parameters[0],
+        responseType = parameters[1],
+        callback = parameters[2];
+        var messageId = getMessageId(indexList);
+        messageHandler.addHandler(
+            messageId, responseType,
+            function (messageObject, messageBody, messagePointer, doneCallback) {
+                callback([getMsgInfo(messageObject), messageBody], messagePointer, doneCallback);
+            },
+            true
+        );
+    },
+    sendSuccessReply: function (success, error, parameters) {
+        var messagePointer = parameters[0];
+        var argsType = parameters[1];
+        var args = parameters[2];
+
+        var replyMessage = new AllJoynWinRTComponent.AJ_Message();
+        var status;
+        status = AllJoynWinRTComponent.AllJoyn.aj_MarshalReplyMsg(messagePointer, replyMessage);
+        if (status === AllJoynWinRTComponent.AJ_Status.aj_OK && args) {
+            status = AllJoynWinRTComponent.AllJoyn.aj_MarshalArgs(replyMessage, argsType, args);
+            console.log('Marshaling success reply arguments resulted in a status of ' + status);
+        }
+        if (status === AllJoynWinRTComponent.AJ_Status.aj_OK) {
+            status = AllJoynWinRTComponent.AllJoyn.aj_DeliverMsg(replyMessage);
+            console.log('Delivering success reply resulted in a status of ' + status);
+        }
+        AllJoynWinRTComponent.AllJoyn.aj_CloseMsg(replyMessage);
+
+        if (status === AllJoynWinRTComponent.AJ_Status.aj_OK) {
+            success();
+        } else {
+            error();
+        }
+    },
+    sendErrorReply: function (success, error, parameters) {
+        var messagePointer = parameters[0];
+        var errorMessage = parameters[1];
+
+        var replyMessage = new AllJoynWinRTComponent.AJ_Message();
+        var status;
+        status = AllJoynWinRTComponent.AllJoyn.aj_MarshalErrorMsg(messagePointer, replyMessage, errorMessage);
+        if (status === AllJoynWinRTComponent.AJ_Status.aj_OK) {
+            status = AllJoynWinRTComponent.AllJoyn.aj_DeliverMsg(replyMessage);
+            console.log('Delivering error reply resulted in a status of ' + status);
+        }
+        AllJoynWinRTComponent.AllJoyn.aj_CloseMsg(replyMessage);
+
+        if (status === AllJoynWinRTComponent.AJ_Status.aj_OK) {
+            success();
+        } else {
+            error();
+        }
     },
     replyAcceptSession: function (success, error, parameters) {
         var messagePointer = parameters[0];
@@ -492,7 +564,8 @@ cordova.commandProxy.add('AllJoyn', {
             acceptSessionId, 'qus',
             function (messageObject, messageBody, messagePointer, doneCallback) {
                 acceptSessionListener(messageBody, messagePointer, doneCallback);
-            }
+            },
+            true
         );
     },
     setSignalRule: function (success, error, parameters) {

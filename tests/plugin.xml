@@ -4,6 +4,9 @@
     version="0.0.2">
     <name>AllJoyn Tests</name>
 
-    <js-module src="tests.js" name="tests">
-    </js-module>
+    <js-module src="tests.js" name="tests" />
+
+    <js-module src="registration.js" name="registration" />
+    <js-module src="connection.js" name="connection" />
+    <js-module src="methods.js" name="methods" />
 </plugin>

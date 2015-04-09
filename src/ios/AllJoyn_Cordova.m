@@ -832,7 +832,7 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
                     }
 
                     if(pMsg->hdr->msgType == AJ_MSG_ERROR) {
-                        [self sendErrorMessage:[NSString stringWithFormat:@"Error: %s", pMsg->error] toCallback:[command callbackId] withKeepCallback:false];
+                        [self sendErrorMessage:[NSString stringWithFormat:@"%s", pMsg->error] toCallback:[command callbackId] withKeepCallback:false];
                         return true;
                     }
 

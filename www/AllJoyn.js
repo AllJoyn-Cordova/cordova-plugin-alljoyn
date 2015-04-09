@@ -2,6 +2,7 @@ var exec = require('cordova/exec');
 var cordova = require('cordova');
 
 var registeredObjects = [];
+var connectedBus = null;
 
 var getSignature = function (indexList, objectsList) {
     var objects = objectsList[indexList[0]];
@@ -235,9 +236,14 @@ var AllJoyn = {
             };
             exec(acceptSessionListener, function () {}, 'AllJoyn', 'setAcceptSessionListener', [acceptSessionListener]);
 
+            connectedBus = bus;
             success(bus);
         };
-        exec(successCallback, error, 'AllJoyn', 'connect', ['', 5000]);
+        if (connectedBus === null) {
+            exec(successCallback, error, 'AllJoyn', 'connect', ['', 5000]);
+        } else {
+            success(connectedBus);
+        }
     },
     registerObjects: function (success, error, applicationObjects, proxyObjects) {
         exec(function () {
