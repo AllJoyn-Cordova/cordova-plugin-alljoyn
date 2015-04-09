@@ -15,6 +15,9 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.json.JSONException;
 
+import java.util.Timer;
+import java.util.TimerTask;
+
 public class AllJoynCordova extends CordovaPlugin {
 	/* Load the native alljoyn library. */
 	static {
@@ -27,21 +30,54 @@ public class AllJoynCordova extends CordovaPlugin {
     private static final String DAEMON_PWD = "1234"; // 000000 or 1234
     private AJ_BusAttachment bus;
 
-	/**
-	 * Sets the context of the Command. This can then be used to do things like
-	 * get file paths associated with the Activity.
-	 *
-	 * @param cordova The context of the main Activity.
-	 * @param webView The CordovaWebView Cordova is running in.
-	 */
-	@Override
-	public void initialize(final CordovaInterface cordova, CordovaWebView webView) {
-		super.initialize(cordova, webView);
-		Log.i(TAG, "Initialization running.");		
-		alljoyn.AJ_Initialize();
-		bus = new AJ_BusAttachment();
-		Log.i(TAG, "Initialization completed.");
-	}
+    // Timer
+    private static final long AJ_MESSAGE_SLOW_LOOP_INTERVAL = 500;
+    private static final long AJ_MESSAGE_FAST_LOOP_INTERVAL = 50;
+    private static final long UNMARSHAL_TIMEOUT = 1000 * 5;
+    private static final long CONNECT_TIMEOUT = 1000 * 60;
+    private static final long METHOD_TIMEOUT = 100 * 10;
+    private Timer m_pTimer = null;
+    private boolean m_bStartTimer = false;
+
+    /**
+     * Sets the context of the Command. This can then be used to do things like
+     * get file paths associated with the Activity.
+     *
+     * @param cordova The context of the main Activity.
+     * @param webView The CordovaWebView Cordova is running in.
+     */
+    @Override
+    public void initialize(final CordovaInterface cordova, CordovaWebView webView) {
+        super.initialize(cordova, webView);
+        Log.i(TAG, "Initialization running.");
+        alljoyn.AJ_Initialize();
+        bus = new AJ_BusAttachment();
+
+        // Initialize timer for msg loop
+        m_pTimer = new Timer();
+        m_pTimer.scheduleAtFixedRate
+        (
+                new TimerTask()
+                {
+                    @Override
+                    public void run()
+                    {
+                        if (!m_bStartTimer)
+                        {
+                            return;
+                        }
+
+                        _AJ_Message msg = new _AJ_Message();
+                        AJ_Status status = alljoyn.AJ_UnmarshalMsg(bus, msg, UNMARSHAL_TIMEOUT);
+                        alljoyn.AJ_CloseMsg(msg);
+                    }
+                },
+                AJ_MESSAGE_SLOW_LOOP_INTERVAL,
+                AJ_MESSAGE_SLOW_LOOP_INTERVAL
+        );
+
+        Log.i(TAG, "Initialization completed.");
+    }
 
 	/**
 	 * Executes the request and returns PluginResult.
@@ -196,6 +232,7 @@ public class AllJoynCordova extends CordovaPlugin {
 		if (action.equals("addListener")) {
 			Log.i(TAG, "AllJoyn.addListener");
 			AJ_Status status = AJ_Status.AJ_OK;
+            m_bStartTimer = true;
 			
 			if( status == AJ_Status.AJ_OK) {
 				callbackContext.success("Yay!");
