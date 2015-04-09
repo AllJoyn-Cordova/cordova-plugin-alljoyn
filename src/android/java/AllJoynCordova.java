@@ -350,10 +350,11 @@ public class AllJoynCordova extends CordovaPlugin
             m_pMessageHandlers.put
             (
                 msgId,
-                new MsgHandler()
+                new MsgHandler(callbackContext)
                 {
                     public boolean callback(_AJ_Message pMsg)
                     {
+                        this.callbackContext.success("Yay!");
                         return true;
                     }
                 }
@@ -409,8 +410,15 @@ public class AllJoynCordova extends CordovaPlugin
         return ((o << 24) | ((p) << 16) | ((i) << 8) | (m));
     }
 
-    public interface MsgHandler
+    public abstract class MsgHandler
     {
-        public boolean callback(_AJ_Message pMsg);
+        public CallbackContext callbackContext;
+
+        public MsgHandler(CallbackContext callbackContext)
+        {
+            this.callbackContext = callbackContext;
+        }
+
+        public abstract boolean callback(_AJ_Message pMsg);
     }
 }
