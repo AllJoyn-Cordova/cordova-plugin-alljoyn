@@ -8,6 +8,7 @@ import android.os.Message;
 
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaPlugin;
+import org.apache.cordova.PluginResult;
 import org.apache.cordova.CordovaInterface;
 import org.apache.cordova.CordovaWebView;
 
@@ -379,9 +380,37 @@ public class AllJoynCordova extends CordovaPlugin
                         {
                             public boolean callback(_AJ_Message pMsg)
                             {
-                                Log.i(TAG, "AJ_SIGNAL_FOUND_ADV_NAME callbackContext");
-                                this.callbackContext.success("Yay!");
-                                return true;
+                                try
+                                {
+                                    _AJ_Arg arg = new _AJ_Arg();
+                                    alljoyn.AJ_UnmarshalArg(pMsg, arg);
+                                    Log.i(TAG, "FoundAdvertisedName(" + arg.getVal().getV_string() + ")");
+
+                                    // Init responseDictionary
+                                    JSONObject responseDictionary = new JSONObject();
+                                    responseDictionary.put("name", arg.getVal().getV_string());
+                                    responseDictionary.put("sender", pMsg.getSender());
+
+                                    // Init message info
+                                    JSONObject msgInfo = getMsgInfo(pMsg);
+
+                                    // Init callback results
+                                    JSONArray callbackResults = new JSONArray();
+                                    callbackResults.put(msgInfo);
+                                    callbackResults.put(responseDictionary);
+                                    callbackResults.put(null);
+
+                                    // Send plugin result
+                                    PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, callbackResults);
+                                    pluginResult.setKeepCallback(true);
+                                    this.callbackContext.sendPluginResult(pluginResult);
+                                    return true;
+                                }
+                                catch (Exception e)
+                                {
+                                    Log.e(TAG, e.toString());
+                                    return false;
+                                }
                             }
                         }
                 );
@@ -491,6 +520,41 @@ public class AllJoynCordova extends CordovaPlugin
     long AJ_Reply_ID(long id)
     {
         return ((id) | (long)((long)(AJ_RED_ID_FLAG) << 24));
+    }
+
+    JSONObject getMsgInfo(_AJ_Message pMsg)
+    {
+        JSONObject msgInfo = null;
+
+        if (pMsg != null)
+        {
+            msgInfo = new JSONObject();
+
+            try
+            {
+                if (pMsg.getSender() != null)
+                {
+                    msgInfo.put("sender", pMsg.getSender());
+                }
+
+                if (pMsg.getSignature()!= null)
+                {
+                    msgInfo.put("signature", pMsg.getSignature());
+                }
+
+                if (pMsg.getIface() != null)
+                {
+                    msgInfo.put("iface", pMsg.getIface());
+                }
+            }
+            catch (Exception e)
+            {
+                Log.e(TAG, e.toString());
+                return null;
+            }
+        }
+
+        return msgInfo;
     }
 
     public abstract class MsgHandler
