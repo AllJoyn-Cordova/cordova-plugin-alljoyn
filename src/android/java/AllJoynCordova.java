@@ -34,12 +34,17 @@ public class AllJoynCordova extends CordovaPlugin
     private static final String DAEMON_PWD = "1234"; // 000000 or 1234
     private AJ_BusAttachment bus;
 
-    // Timer
     private static final long AJ_MESSAGE_SLOW_LOOP_INTERVAL = 500;
     private static final long AJ_MESSAGE_FAST_LOOP_INTERVAL = 50;
     private static final long UNMARSHAL_TIMEOUT = 1000 * 5;
     private static final long CONNECT_TIMEOUT = 1000 * 60;
     private static final long METHOD_TIMEOUT = 100 * 10;
+
+    private static final long AJ_BUS_ID_FLAG = 0x00;  /**< Identifies that a message belongs to the set of builtin bus object messages */
+    private static final long AJ_APP_ID_FLAG = 0x01;  /**< Identifies that a message belongs to the set of objects implemented by the application */
+    private static final long AJ_PRX_ID_FLAG = 0x02;  /**< Identifies that a message belongs to the set of objects implemented by remote peers */
+    private static final long AJ_SIGNAL_FOUND_ADV_NAME = (((AJ_BUS_ID_FLAG) << 24) | (((1)) << 16) | (((0)) << 8) | (1));   /**< signal for found advertising name */
+
     private Timer m_pTimer = null;
     private boolean m_bStartTimer = false;
     private HashMap m_pMessageHandlers = new HashMap<String, String>();
@@ -151,7 +156,6 @@ public class AllJoynCordova extends CordovaPlugin
             JSONArray localObjects = null;
             JSONArray remoteObjects = null;
             AJ_Object remote = null;
-            AJ_Object prev = null;
 
             Log.i(TAG, "AllJoyn.registerObjects()");
 
@@ -162,25 +166,14 @@ public class AllJoynCordova extends CordovaPlugin
             else
             {
                 localObjects = data.getJSONArray(0);
+                local = alljoyn.AJ_ObjectsCreate();
 
                 for(int i = 0; i < localObjects.length() - 1; i++)
                 {
                     JSONObject object = localObjects.getJSONObject(i);
-                    Log.i(TAG, "AllJoyn.registerObjects("+object.toString()+")");
-
-                    if (local == null)
-                    {
-                        local = alljoyn.AJ_ObjectsCreate();
-                        local.setPath(object.getString("path"));
-                        prev = local;
-                    }
-                    else
-                    {
-                        AJ_Object nObj = new AJ_Object();
-                        nObj.setPath(object.getString("path"));
-                        alljoyn.AJ_ObjectsAdd(prev, nObj);
-                        prev = nObj;
-                    }
+                    AJ_Object nObj = new AJ_Object();
+                    nObj.setPath(object.getString("path"));
+                    local = alljoyn.AJ_ObjectsAdd(local, nObj);
                 }
 
                 Log.i(TAG, "AllJoyn.registerObjects() Local: " + localObjects.toString() + " => " + local.toString());
@@ -193,25 +186,14 @@ public class AllJoynCordova extends CordovaPlugin
             else
             {
                 remoteObjects = data.getJSONArray(1);
+                remote = alljoyn.AJ_ObjectsCreate();
 
                 for(int i = 0; i < remoteObjects.length() - 1; i++)
                 {
                     JSONObject object = remoteObjects.getJSONObject(i);
-                    Log.i(TAG, "AllJoyn.registerObjects("+object.toString()+")");
-
-                    if (remote == null)
-                    {
-                        remote = alljoyn.AJ_ObjectsCreate();
-                        remote.setPath(object.getString("path"));
-                        prev = remote;
-                    }
-                    else
-                    {
-                        AJ_Object nObj = new AJ_Object();
-                        nObj.setPath(object.getString("path"));
-                        alljoyn.AJ_ObjectsAdd(prev, nObj);
-                        prev = nObj;
-                    }
+                    AJ_Object nObj = new AJ_Object();
+                    nObj.setPath(object.getString("path"));
+                    remote = alljoyn.AJ_ObjectsAdd(remote, nObj);
                 }
 
                 Log.i(TAG, "AllJoyn.registerObjects() Remote: " + remoteObjects.toString() + " => " + remote.toString());
@@ -293,16 +275,32 @@ public class AllJoynCordova extends CordovaPlugin
         if (action.equals("addAdvertisedNameListener"))
         {
             Log.i(TAG, "AllJoyn.addAdvertisedNameListener");
-            AJ_Status status = AJ_Status.AJ_OK;
+            String serviceName = data.getString(0);
+            AJ_Status status = alljoyn.AJ_BusFindAdvertisedName(bus, serviceName, alljoynConstants.AJ_BUS_START_FINDING);
 
             if( status == AJ_Status.AJ_OK)
             {
-                callbackContext.success("Yay!");
+                long methodKey = AJ_SIGNAL_FOUND_ADV_NAME;
+
+                m_pMessageHandlers.put
+                (
+                        methodKey,
+                        new MsgHandler(callbackContext)
+                        {
+                            public boolean callback(_AJ_Message pMsg)
+                            {
+                                Log.i(TAG, "AJ_SIGNAL_FOUND_ADV_NAME callbackContext");
+                                this.callbackContext.success("Yay!");
+                                return true;
+                            }
+                        }
+                );
+
                 return true;
             }
             else
             {
-                callbackContext.error("Error: " + status.toString());
+                callbackContext.error("Failure starting find");
                 return false;
             }
         }
