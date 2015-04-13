@@ -41,11 +41,9 @@ public class AllJoynCordova extends CordovaPlugin
     private static final long CONNECT_TIMEOUT = 1000 * 60;
     private static final long METHOD_TIMEOUT = 100 * 10;
 
-    private static final long AJ_BUS_ID_FLAG = 0x00;  /**< Identifies that a message belongs to the set of builtin bus object messages */
-    private static final long AJ_APP_ID_FLAG = 0x01;  /**< Identifies that a message belongs to the set of objects implemented by the application */
-    private static final long AJ_PRX_ID_FLAG = 0x02;  /**< Identifies that a message belongs to the set of objects implemented by remote peers */
-    private static final long AJ_SIGNAL_FOUND_ADV_NAME = (((AJ_BUS_ID_FLAG) << 24) | (((1)) << 16) | (((0)) << 8) | (1));   /**< signal for found advertising name */
+    private static final long AJ_SIGNAL_FOUND_ADV_NAME = (((alljoynConstants.AJ_BUS_ID_FLAG) << 24) | (((1)) << 16) | (((0)) << 8) | (1));   /**< signal for found advertising name */
     private static final long AJ_RED_ID_FLAG = 0x80;
+    private static final long AJ_METHOD_JOIN_SESSION = ((long)(((long)alljoynConstants.AJ_BUS_ID_FLAG) << 24) | (((long)(1)) << 16) | (((long)(0)) << 8) | (10));
 
     private Timer m_pTimer = null;
     private boolean m_bStartTimer = false;
@@ -85,12 +83,20 @@ public class AllJoynCordova extends CordovaPlugin
 
                         if (status == AJ_Status.AJ_OK)
                         {
-                            long msgId = msg.getMsgId();
+                            final long msgId = msg.getMsgId();
 
                             if (m_pMessageHandlers.containsKey(msgId))
                             {
                                 MsgHandler handler = (MsgHandler)m_pMessageHandlers.get(msgId);
-                                handler.callback(msg);
+
+                                try
+                                {
+                                    handler.callback(msg);
+                                }
+                                catch (Exception e)
+                                {
+                                    Log.i(TAG, e.toString());
+                                }
                             }
                             else
                             {
@@ -174,8 +180,7 @@ public class AllJoynCordova extends CordovaPlugin
                 return false;
             }
         }
-
-        if (action.equals("registerObjects"))
+        else if (action.equals("registerObjects"))
         {
             AJ_Status status = null;
             AJ_Object local = null;
@@ -294,58 +299,88 @@ public class AllJoynCordova extends CordovaPlugin
             callbackContext.success("Registered objects!");
             return true;
         }
-
-        if (action.equals("joinSession"))
+        else if (action.equals("addAdvertisedNameListener"))
         {
-            Log.i(TAG, "AllJoyn.joinSession");
-            AJ_Status status = AJ_Status.AJ_OK;
+            Log.i(TAG, "AllJoyn.addAdvertisedNameListener");
+            String serviceName = data.getString(0);
+            AJ_Status status = alljoyn.AJ_BusFindAdvertisedName(bus, serviceName, alljoynConstants.AJ_BUS_START_FINDING);
+            m_bStartTimer = true;
 
-            if (status == AJ_Status.AJ_OK)
+            if( status == AJ_Status.AJ_OK)
             {
-                callbackContext.success("Yay!");
+                final long msgId = AJ_SIGNAL_FOUND_ADV_NAME;
+
+                m_pMessageHandlers.put
+                (
+                    msgId,
+                    new MsgHandler(callbackContext)
+                    {
+                        public boolean callback(_AJ_Message pMsg) throws JSONException
+                        {
+                            m_pMessageHandlers.remove(msgId);
+                            _AJ_Arg arg = new _AJ_Arg();
+                            alljoyn.AJ_UnmarshalArg(pMsg, arg);
+                            Log.i(TAG, "FoundAdvertisedName(" + arg.getVal().getV_string() + ")");
+
+                            // Init responseDictionary
+                            JSONObject responseDictionary = new JSONObject();
+                            responseDictionary.put("name", arg.getVal().getV_string());
+                            responseDictionary.put("sender", pMsg.getSender());
+
+                            // Init message info
+                            JSONObject msgInfo = getMsgInfo(pMsg);
+
+                            // Init callback results
+                            JSONArray callbackResults = new JSONArray();
+                            callbackResults.put(msgInfo);
+                            callbackResults.put(responseDictionary);
+                            callbackResults.put(null);
+
+                            // Send plugin result
+                            PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, callbackResults);
+                            pluginResult.setKeepCallback(true);
+                            this.callbackContext.sendPluginResult(pluginResult);
+                            return true;
+                        }
+                    }
+                );
+
                 return true;
             }
             else
             {
-                callbackContext.error("Error: " + status.toString());
+                callbackContext.error("Failure starting find");
                 return false;
             }
         }
-        if (action.equals("leaveSession"))
+        else if (action.equals("setSignalRule"))
         {
-            Log.i(TAG, "AllJoyn.leaveSession");
+            Log.i(TAG, "AllJoyn.setSignalRule");
             AJ_Status status = AJ_Status.AJ_OK;
+            String ruleString = data.getString(0);
+            int rule = data.getInt(1);
 
-            if (status == AJ_Status.AJ_OK)
+            try
             {
-                callbackContext.success("Yay!");
+                status = alljoyn.AJ_BusSetSignalRule(bus, ruleString, rule);
+            }
+            catch (Exception e)
+            {
+                Log.i(TAG, "Exception in setSignalRule: " + e.toString());
+            }
+
+            if( status == AJ_Status.AJ_OK)
+            {
+                callbackContext.success("setSignalRule successfully!");
                 return true;
             }
             else
             {
-                callbackContext.error("Error: " + status.toString());
+                callbackContext.error("Error in setSignalRule: " + status.toString());
                 return false;
             }
         }
-
-        if (action.equals("invokeMember"))
-        {
-            Log.i(TAG, "AllJoyn.invokeMember");
-            AJ_Status status = AJ_Status.AJ_OK;
-
-            if ( status == AJ_Status.AJ_OK)
-            {
-                callbackContext.success("Yay!");
-                return true;
-            }
-            else
-            {
-                callbackContext.error("Error: " + status.toString());
-                return false;
-            }
-        }
-
-        if (action.equals("addInterfacesListener"))
+        else if (action.equals("addInterfacesListener"))
         {
             Log.i(TAG, "AllJoyn.addInterfacesListener");
             AJ_Status status = AJ_Status.AJ_OK;
@@ -361,70 +396,7 @@ public class AllJoynCordova extends CordovaPlugin
                 return false;
             }
         }
-
-        if (action.equals("addAdvertisedNameListener"))
-        {
-            Log.i(TAG, "AllJoyn.addAdvertisedNameListener");
-            String serviceName = data.getString(0);
-            AJ_Status status = alljoyn.AJ_BusFindAdvertisedName(bus, serviceName, alljoynConstants.AJ_BUS_START_FINDING);
-            m_bStartTimer = true;
-
-            if( status == AJ_Status.AJ_OK)
-            {
-                long methodKey = AJ_SIGNAL_FOUND_ADV_NAME;
-
-                m_pMessageHandlers.put
-                (
-                        methodKey,
-                        new MsgHandler(callbackContext)
-                        {
-                            public boolean callback(_AJ_Message pMsg)
-                            {
-                                try
-                                {
-                                    _AJ_Arg arg = new _AJ_Arg();
-                                    alljoyn.AJ_UnmarshalArg(pMsg, arg);
-                                    Log.i(TAG, "FoundAdvertisedName(" + arg.getVal().getV_string() + ")");
-
-                                    // Init responseDictionary
-                                    JSONObject responseDictionary = new JSONObject();
-                                    responseDictionary.put("name", arg.getVal().getV_string());
-                                    responseDictionary.put("sender", pMsg.getSender());
-
-                                    // Init message info
-                                    JSONObject msgInfo = getMsgInfo(pMsg);
-
-                                    // Init callback results
-                                    JSONArray callbackResults = new JSONArray();
-                                    callbackResults.put(msgInfo);
-                                    callbackResults.put(responseDictionary);
-                                    callbackResults.put(null);
-
-                                    // Send plugin result
-                                    PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, callbackResults);
-                                    pluginResult.setKeepCallback(true);
-                                    this.callbackContext.sendPluginResult(pluginResult);
-                                    return true;
-                                }
-                                catch (Exception e)
-                                {
-                                    Log.e(TAG, e.toString());
-                                    return false;
-                                }
-                            }
-                        }
-                );
-
-                return true;
-            }
-            else
-            {
-                callbackContext.error("Failure starting find");
-                return false;
-            }
-        }
-
-        if (action.equals("addListener"))
+        else if (action.equals("addListener"))
         {
             Log.i(TAG, "AllJoyn.addListener");
             AJ_Status status = AJ_Status.AJ_OK;
@@ -452,7 +424,7 @@ public class AllJoynCordova extends CordovaPlugin
             int objectIndex = indexList.getInt(1);
             int interfaceIndex = indexList.getInt(2);
             int memberIndex = indexList.getInt(3);
-            long msgId = AJ_Encode_Message_ID(listIndex, objectIndex, interfaceIndex, memberIndex);
+            final long msgId = AJ_Encode_Message_ID(listIndex, objectIndex, interfaceIndex, memberIndex);
 
             m_pMessageHandlers.put
             (
@@ -461,6 +433,7 @@ public class AllJoynCordova extends CordovaPlugin
                 {
                     public boolean callback(_AJ_Message pMsg)
                     {
+                        m_pMessageHandlers.remove(msgId);
                         this.callbackContext.success("Yay!");
                         return true;
                     }
@@ -480,31 +453,106 @@ public class AllJoynCordova extends CordovaPlugin
                 return false;
             }
         }
-
-        if (action.equals("setSignalRule"))
+        else if (action.equals("joinSession"))
         {
-            Log.i(TAG, "AllJoyn.setSignalRule");
+            Log.i(TAG, "AllJoyn.joinSession");
             AJ_Status status = AJ_Status.AJ_OK;
-            String ruleString = data.getString(0);
-            int rule = data.getInt(1);
 
-            try
+            if (data.isNull(0))
             {
-                status = alljoyn.AJ_BusSetSignalRule(bus, ruleString, rule);
-            }
-            catch (Exception e)
-            {
-                Log.i(TAG, "Exception in setSignalRule: " + e.toString());
+                callbackContext.error("JoinSession: Invalid Argument");
+                return false;
             }
 
-            if( status == AJ_Status.AJ_OK)
+            JSONObject server = data.getJSONObject(0);
+            int port = (Integer)server.get("port");
+            String name = (String)server.get("name");
+            status = alljoyn.AJ_BusJoinSession(bus, name, port, null);
+
+            if (status == AJ_Status.AJ_OK)
             {
-                callbackContext.success("setSignalRule successfully!");
+                final long msgId = AJ_Reply_ID(AJ_METHOD_JOIN_SESSION);
+                m_pMessageHandlers.put
+                (
+                    msgId,
+                    new MsgHandler(callbackContext)
+                    {
+                        public boolean callback(_AJ_Message pMsg) throws JSONException
+                        {
+                            m_pMessageHandlers.remove(msgId);
+                            Log.i(TAG, " -- Got reply to JoinSession ---");
+                            Log.i(TAG, "MsgType: " + pMsg.getHdr().getMsgType());
+                            long replyCode;
+                            long sessionId;
+
+                            if (pMsg.getHdr().getMsgType() == alljoynConstants.AJ_MSG_ERROR)
+                            {
+                                callbackContext.error("Failure joining session MSG ERROR");
+                            }
+                            else
+                            {
+//                                AJ_Status status = alljoyn.AJ_UnmarshalArgs(pMsg, "uu");
+//                                replyCode = 0;
+//                                sessionId = 0;
+//                                Log.i(TAG, "replyCode=" + replyCode +  " sessionId=" + sessionId);
+//
+//                                if (replyCode == alljoynConstants.AJ_JOINSESSION_REPLY_SUCCESS)
+//                                {
+//
+//                                }
+//                                else
+//                                {
+//                                    if (replyCode == alljoynConstants.AJ_JOINSESSION_REPLY_ALREADY_JOINED)
+//                                    {
+//
+//                                    }
+//                                    else
+//                                    {
+//
+//                                    }
+//                                }
+                            }
+
+                            return true;
+                        }
+                    }
+                );
+            }
+            else
+            {
+                callbackContext.error("Error: " + status.toString());
+                return false;
+            }
+        }
+        else if (action.equals("leaveSession"))
+        {
+            Log.i(TAG, "AllJoyn.leaveSession");
+            AJ_Status status = AJ_Status.AJ_OK;
+
+            if (status == AJ_Status.AJ_OK)
+            {
+                callbackContext.success("Yay!");
                 return true;
             }
             else
             {
-                callbackContext.error("Error in setSignalRule: " + status.toString());
+                callbackContext.error("Error: " + status.toString());
+                return false;
+            }
+        }
+        else if (action.equals("invokeMember"))
+        {
+            Log.i(TAG, "AllJoyn.invokeMember");
+            AJ_Status status = AJ_Status.AJ_OK;
+
+            if ( status == AJ_Status.AJ_OK)
+            {
+                callbackContext.success("Yay!");
+                return true;
+            }
+            else
+            {
+                callbackContext.error("Error: " + status.toString());
                 return false;
             }
         }
@@ -522,7 +570,7 @@ public class AllJoynCordova extends CordovaPlugin
         return ((id) | (long)((long)(AJ_RED_ID_FLAG) << 24));
     }
 
-    JSONObject getMsgInfo(_AJ_Message pMsg)
+    JSONObject getMsgInfo(_AJ_Message pMsg) throws JSONException
     {
         JSONObject msgInfo = null;
 
@@ -530,27 +578,19 @@ public class AllJoynCordova extends CordovaPlugin
         {
             msgInfo = new JSONObject();
 
-            try
+            if (pMsg.getSender() != null)
             {
-                if (pMsg.getSender() != null)
-                {
-                    msgInfo.put("sender", pMsg.getSender());
-                }
-
-                if (pMsg.getSignature()!= null)
-                {
-                    msgInfo.put("signature", pMsg.getSignature());
-                }
-
-                if (pMsg.getIface() != null)
-                {
-                    msgInfo.put("iface", pMsg.getIface());
-                }
+                msgInfo.put("sender", pMsg.getSender());
             }
-            catch (Exception e)
+
+            if (pMsg.getSignature()!= null)
             {
-                Log.e(TAG, e.toString());
-                return null;
+                msgInfo.put("signature", pMsg.getSignature());
+            }
+
+            if (pMsg.getIface() != null)
+            {
+                msgInfo.put("iface", pMsg.getIface());
             }
         }
 
@@ -566,6 +606,6 @@ public class AllJoynCordova extends CordovaPlugin
             this.callbackContext = callbackContext;
         }
 
-        public abstract boolean callback(_AJ_Message pMsg);
+        public abstract boolean callback(_AJ_Message pMsg) throws JSONException;
     }
 }
