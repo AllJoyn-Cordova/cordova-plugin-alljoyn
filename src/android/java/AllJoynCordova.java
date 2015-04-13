@@ -168,11 +168,44 @@ public class AllJoynCordova extends CordovaPlugin
                 localObjects = data.getJSONArray(0);
                 local = alljoyn.AJ_ObjectsCreate();
 
-                for(int i = 0; i < localObjects.length() - 1; i++)
+                for (int i = 0; i < localObjects.length() - 1; i++)
                 {
                     JSONObject object = localObjects.getJSONObject(i);
                     AJ_Object nObj = new AJ_Object();
+
+                    // Init path
                     nObj.setPath(object.getString("path"));
+
+                    // Init interfaces
+                    JSONArray interfacesDesc = object.getJSONArray("interfaces");
+                    SWIGTYPE_p_p_p_char interfaces = alljoyn.AJ_InterfacesCreate();
+                    for (int j = 0; j < interfacesDesc.length(); j++)
+                    {
+                        if (!interfacesDesc.isNull(j))
+                        {
+                            JSONArray interfaceDesc = interfacesDesc.getJSONArray(j);
+                            SWIGTYPE_p_p_char ifaceMethods = null;
+
+                            for (int k = 0; k < interfaceDesc.length(); k++)
+                            {
+                                if (ifaceMethods == null)
+                                {
+                                    ifaceMethods = alljoyn.AJ_InterfaceDescriptionCreate(interfaceDesc.getString(k));
+                                }
+                                else
+                                {
+                                    if (interfaceDesc.getString(k).length() > 0)
+                                    {
+                                        ifaceMethods = alljoyn.AJ_InterfaceDescriptionAdd(ifaceMethods, interfaceDesc.getString(k));
+                                    }
+                                }
+                            }
+
+                            interfaces = alljoyn.AJ_InterfacesAdd(interfaces, ifaceMethods);
+                        }
+                    }
+                    nObj.setInterfaces(interfaces);
+
                     local = alljoyn.AJ_ObjectsAdd(local, nObj);
                 }
 
@@ -188,11 +221,42 @@ public class AllJoynCordova extends CordovaPlugin
                 remoteObjects = data.getJSONArray(1);
                 remote = alljoyn.AJ_ObjectsCreate();
 
-                for(int i = 0; i < remoteObjects.length() - 1; i++)
+                for (int i = 0; i < remoteObjects.length() - 1; i++)
                 {
                     JSONObject object = remoteObjects.getJSONObject(i);
                     AJ_Object nObj = new AJ_Object();
+
+                    // Init path
                     nObj.setPath(object.getString("path"));
+
+                    // Init interfaces
+                    JSONArray interfacesDesc = object.getJSONArray("interfaces");
+                    SWIGTYPE_p_p_p_char interfaces = alljoyn.AJ_InterfacesCreate();
+                    for (int j = 0; j < interfacesDesc.length(); j++)
+                    {
+                        if (!interfacesDesc.isNull(j))
+                        {
+                            JSONArray interfaceDesc = interfacesDesc.getJSONArray(j);
+                            SWIGTYPE_p_p_char ifaceMethods = null;
+                            for (int k = 0; k < interfaceDesc.length(); k++)
+                            {
+                                if (ifaceMethods == null)
+                                {
+                                    ifaceMethods = alljoyn.AJ_InterfaceDescriptionCreate(interfaceDesc.getString(k));
+                                }
+                                else
+                                {
+                                    if (interfaceDesc.getString(k).length() > 0)
+                                    {
+                                        ifaceMethods = alljoyn.AJ_InterfaceDescriptionAdd(ifaceMethods, interfaceDesc.getString(k));
+                                    }
+                                }
+                            }
+                            interfaces = alljoyn.AJ_InterfacesAdd(interfaces, ifaceMethods);
+                        }
+                    }
+                    nObj.setInterfaces(interfaces);
+
                     remote = alljoyn.AJ_ObjectsAdd(remote, nObj);
                 }
 
@@ -334,16 +398,6 @@ public class AllJoynCordova extends CordovaPlugin
             int interfaceIndex = indexList.getInt(2);
             int memberIndex = indexList.getInt(3);
             long msgId = AJ_Encode_Message_ID(listIndex, objectIndex, interfaceIndex, memberIndex);
-
-            Log.i(TAG, "Adding listener for msgId=" + msgId);
-
-//            TODO: stuck in alljoyn.AJ_GetMemberType()
-//            AJ_MemberType memberType = alljoyn.AJ_GetMemberType(msgId, null, null);
-//            if (memberType == AJ_MemberType.AJ_INVALID_MEMBER)
-//            {
-//                Log.i(TAG, "addListener: Invalid message id/index list" + msgId);
-//                return false;
-//            }
 
             m_pMessageHandlers.put
             (
