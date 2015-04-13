@@ -44,6 +44,7 @@ public class AllJoynCordova extends CordovaPlugin
     private static final long AJ_APP_ID_FLAG = 0x01;  /**< Identifies that a message belongs to the set of objects implemented by the application */
     private static final long AJ_PRX_ID_FLAG = 0x02;  /**< Identifies that a message belongs to the set of objects implemented by remote peers */
     private static final long AJ_SIGNAL_FOUND_ADV_NAME = (((AJ_BUS_ID_FLAG) << 24) | (((1)) << 16) | (((0)) << 8) | (1));   /**< signal for found advertising name */
+    private static final long AJ_RED_ID_FLAG = 0x80;
 
     private Timer m_pTimer = null;
     private boolean m_bStartTimer = false;
@@ -90,6 +91,30 @@ public class AllJoynCordova extends CordovaPlugin
                                 MsgHandler handler = (MsgHandler)m_pMessageHandlers.get(msgId);
                                 handler.callback(msg);
                             }
+                            else
+                            {
+                                /*
+                                 * Pass to the built-in bus message handlers
+                                 */
+                                Log.i(TAG, "AJ_BusHandleBusMessage() msgId=" + msgId);
+                                status = alljoyn.AJ_BusHandleBusMessage(msg);
+                            }
+                        }
+                        else if(status == AJ_Status.AJ_ERR_TIMEOUT)
+                        {
+                            // Nothing to do for now, continue i guess
+                            Log.i(TAG, "Timeout getting MSG. Will try again...");
+                            status = AJ_Status.AJ_OK;
+                        }
+                        else if (status == AJ_Status.AJ_ERR_NO_MATCH)
+                        {
+                            // Ignore unknown messages
+                            Log.i(TAG, "AJ_ERR_NO_MATCH in main loop. Ignoring!");
+                            status = AJ_Status.AJ_OK;
+                        }
+                        else
+                        {
+                            Log.i(TAG, " -- MainLoopError AJ_UnmarshalMsg returned status=" + alljoyn.AJ_StatusText(status));
                         }
 
                         alljoyn.AJ_CloseMsg(msg);
@@ -341,6 +366,7 @@ public class AllJoynCordova extends CordovaPlugin
             Log.i(TAG, "AllJoyn.addAdvertisedNameListener");
             String serviceName = data.getString(0);
             AJ_Status status = alljoyn.AJ_BusFindAdvertisedName(bus, serviceName, alljoynConstants.AJ_BUS_START_FINDING);
+            m_bStartTimer = true;
 
             if( status == AJ_Status.AJ_OK)
             {
@@ -460,6 +486,11 @@ public class AllJoynCordova extends CordovaPlugin
     long AJ_Encode_Message_ID(int o, int p, int i, int m)
     {
         return ((o << 24) | ((p) << 16) | ((i) << 8) | (m));
+    }
+
+    long AJ_Reply_ID(long id)
+    {
+        return ((id) | (long)((long)(AJ_RED_ID_FLAG) << 24));
     }
 
     public abstract class MsgHandler
