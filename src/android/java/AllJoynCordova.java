@@ -466,7 +466,7 @@ public class AllJoynCordova extends CordovaPlugin
 
             JSONObject server = data.getJSONObject(0);
             int port = (Integer)server.get("port");
-            String name = (String)server.get("name");
+            final String name = (String)server.get("name");
             status = alljoyn.AJ_BusJoinSession(bus, name, port, null);
 
             if (status == AJ_Status.AJ_OK)
@@ -491,32 +491,53 @@ public class AllJoynCordova extends CordovaPlugin
                             }
                             else
                             {
-//                                AJ_Status status = alljoyn.AJ_UnmarshalArgs(pMsg, "uu");
-//                                replyCode = 0;
-//                                sessionId = 0;
-//                                Log.i(TAG, "replyCode=" + replyCode +  " sessionId=" + sessionId);
-//
-//                                if (replyCode == alljoynConstants.AJ_JOINSESSION_REPLY_SUCCESS)
-//                                {
-//
-//                                }
-//                                else
-//                                {
-//                                    if (replyCode == alljoynConstants.AJ_JOINSESSION_REPLY_ALREADY_JOINED)
-//                                    {
-//
-//                                    }
-//                                    else
-//                                    {
-//
-//                                    }
-//                                }
+                                JSONArray args = UnmarshalArgs(pMsg, "uu");
+                                replyCode = args.getLong(0);
+                                sessionId = args.getLong(1);
+                                Log.i(TAG, "replyCode=" + replyCode +  " sessionId=" + sessionId);
+
+                                if (replyCode == alljoynConstants.AJ_JOINSESSION_REPLY_SUCCESS)
+                                {
+                                    // Init callback results
+                                    JSONArray callbackResults = new JSONArray();
+                                    callbackResults.put(sessionId);
+                                    callbackResults.put(name);
+
+                                    // Send plugin result
+                                    PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, callbackResults);
+                                    pluginResult.setKeepCallback(false);
+                                    this.callbackContext.sendPluginResult(pluginResult);
+                                    return true;
+                                }
+                                else
+                                {
+                                    if (replyCode == alljoynConstants.AJ_JOINSESSION_REPLY_ALREADY_JOINED)
+                                    {
+                                        // Init callback results
+                                        JSONArray callbackResults = new JSONArray();
+                                        callbackResults.put(pMsg.getSessionId());
+                                        callbackResults.put(name);
+
+                                        // Send plugin result
+                                        PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, callbackResults);
+                                        pluginResult.setKeepCallback(false);
+                                        this.callbackContext.sendPluginResult(pluginResult);
+                                        return true;
+                                    }
+                                    else
+                                    {
+                                        callbackContext.error("Failure joining session replyCode = " + replyCode);
+                                        return false;
+                                    }
+                                }
                             }
 
                             return true;
                         }
                     }
                 );
+
+                return true;
             }
             else
             {
@@ -607,5 +628,50 @@ public class AllJoynCordova extends CordovaPlugin
         }
 
         public abstract boolean callback(_AJ_Message pMsg) throws JSONException;
+    }
+
+    public JSONArray UnmarshalArgs(_AJ_Message pMsg, String signature) throws JSONException
+    {
+        JSONArray args = new JSONArray();
+        AJ_Status status = AJ_Status.AJ_OK;
+        _AJ_Arg arg = new _AJ_Arg();
+
+        for (int i = 0; i < signature.length(); i++)
+        {
+            alljoyn.AJ_UnmarshalArg(pMsg, arg);
+
+            switch (signature.charAt(i))
+            {
+                case 'i':
+                    args.put(i, alljoyn.getV_int32(arg.getVal().getV_int32()));
+                    break;
+
+                case 'n':
+                    args.put(i, alljoyn.getV_int16(arg.getVal().getV_int16()));
+                    break;
+
+                case 'q':
+                    args.put(i, alljoyn.getV_uint16(arg.getVal().getV_uint16()));
+                    break;
+
+                case 't':
+                    args.put(i, alljoyn.getV_uint64(arg.getVal().getV_uint64()));
+                    break;
+
+                case 'u':
+                    args.put(i, alljoyn.getV_uint32(arg.getVal().getV_uint32()));
+                    break;
+
+                case 'x':
+                    args.put(i, alljoyn.getV_int64(arg.getVal().getV_int64()));
+                    break;
+
+                case 'y':
+                    args.put(i, alljoyn.getV_byte(arg.getVal().getV_byte()));
+                    break;
+            }
+        }
+
+        return args;
     }
 }
