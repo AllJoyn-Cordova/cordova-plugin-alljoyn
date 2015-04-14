@@ -12,6 +12,55 @@
 %apply unsigned long {uint32_t}
 %rename(_AJ_Message) AJ_Message;
 
+%inline %{
+
+uint32_t getV_bool(uint32_t* val) 
+{
+	return *val;
+}
+
+uint8_t getV_byte(uint8_t* val) 
+{
+	return *val;
+}
+
+uint16_t getV_uint16(uint16_t* val) 
+{
+	return *val;
+}
+
+uint32_t getV_uint32(uint32_t* val) 
+{
+	return *val;
+}
+
+uint64_t getV_uint64(uint64_t* val) 
+{
+	return *val;
+}
+
+int16_t getV_int16(int16_t* val) 
+{
+	return *val;
+}
+
+int32_t getV_int32(int32_t* val) 
+{
+	return *val;
+}
+
+int64_t getV_int64(int64_t* val) 
+{
+	return *val;
+}
+
+double getV_double(double* val) 
+{
+	return *val;
+}
+
+%}
+
 %include aj_target.i
 %include aj_debug.i
 %include aj_version.i
