@@ -630,6 +630,72 @@ public class AllJoynCordova extends CordovaPlugin
         public abstract boolean callback(_AJ_Message pMsg) throws JSONException;
     }
 
+    public AJ_Status MarshalArgs(_AJ_Message pMsg, String signature, JSONArray args) throws JSONException
+    {
+        AJ_Status status = AJ_Status.AJ_OK;
+
+        for (int i = 0; i < signature.length(); i++)
+        {
+            _AJ_Arg arg = new _AJ_Arg();
+            SWIGTYPE_p_uint32_t p_bool = new SWIGTYPE_p_uint32_t();
+            SWIGTYPE_p_uint8_t p_uint8_t = new SWIGTYPE_p_uint8_t();
+            SWIGTYPE_p_uint16_t p_uint16_t = new SWIGTYPE_p_uint16_t();
+            SWIGTYPE_p_uint32_t p_uint32_t = new SWIGTYPE_p_uint32_t();
+            SWIGTYPE_p_uint64_t p_uint64_t = new SWIGTYPE_p_uint64_t();
+            SWIGTYPE_p_int16_t p_int16_t = new SWIGTYPE_p_int16_t();
+            SWIGTYPE_p_int32_t p_int32_t = new SWIGTYPE_p_int32_t();
+            SWIGTYPE_p_int64_t p_int64_t = new SWIGTYPE_p_int64_t();
+            SWIGTYPE_p_double p_double = new SWIGTYPE_p_double();
+
+            switch (signature.charAt(i))
+            {
+                case 'i':
+                    alljoyn.setV_int32(p_int32_t, args.get(i).toString());
+                    arg.getVal().setV_int32(p_int32_t);
+                    status = alljoyn.AJ_MarshalArg(pMsg, arg);
+                    break;
+
+                case 'n':
+                    alljoyn.setV_int16(p_int16_t, args.get(i).toString());
+                    arg.getVal().setV_int16(p_int16_t);
+                    status = alljoyn.AJ_MarshalArg(pMsg, arg);
+                    break;
+
+                case 'q':
+                    alljoyn.setV_uint16(p_uint16_t, args.get(i).toString());
+                    arg.getVal().setV_uint16(p_uint16_t);
+                    status = alljoyn.AJ_MarshalArg(pMsg, arg);
+                    break;
+
+                case 't':
+                    alljoyn.setV_uint64(p_uint64_t, args.get(i).toString());
+                    arg.getVal().setV_uint64(p_uint64_t);
+                    status = alljoyn.AJ_MarshalArg(pMsg, arg);
+                    break;
+
+                case 'u':
+                    alljoyn.setV_uint32(p_uint32_t, args.get(i).toString());
+                    arg.getVal().setV_uint32(p_uint32_t);
+                    status = alljoyn.AJ_MarshalArg(pMsg, arg);
+                    break;
+
+                case 'x':
+                    alljoyn.setV_int64(p_int64_t, args.get(i).toString());
+                    arg.getVal().setV_int64(p_int64_t);
+                    status = alljoyn.AJ_MarshalArg(pMsg, arg);
+                    break;
+
+                case 'y':
+                    alljoyn.setV_byte(p_uint8_t, args.get(i).toString());
+                    arg.getVal().setV_byte(p_uint8_t);
+                    status = alljoyn.AJ_MarshalArg(pMsg, arg);
+                    break;
+            }
+        }
+
+        return status;
+    }
+
     public JSONArray UnmarshalArgs(_AJ_Message pMsg, String signature) throws JSONException
     {
         JSONArray args = new JSONArray();
@@ -643,31 +709,31 @@ public class AllJoynCordova extends CordovaPlugin
             switch (signature.charAt(i))
             {
                 case 'i':
-                    args.put(i, alljoyn.getV_int32(arg.getVal().getV_int32()));
+                    args.put(i, Integer.parseInt(alljoyn.getV_int32(arg.getVal().getV_int32())));
                     break;
 
                 case 'n':
-                    args.put(i, alljoyn.getV_int16(arg.getVal().getV_int16()));
+                    args.put(i, Integer.parseInt(alljoyn.getV_int16(arg.getVal().getV_int16())));
                     break;
 
                 case 'q':
-                    args.put(i, alljoyn.getV_uint16(arg.getVal().getV_uint16()));
+                    args.put(i, Integer.parseInt(alljoyn.getV_uint16(arg.getVal().getV_uint16())));
                     break;
 
                 case 't':
-                    args.put(i, alljoyn.getV_uint64(arg.getVal().getV_uint64()));
+                    args.put(i, Long.parseLong(alljoyn.getV_uint64(arg.getVal().getV_uint64())));
                     break;
 
                 case 'u':
-                    args.put(i, alljoyn.getV_uint32(arg.getVal().getV_uint32()));
+                    args.put(i, Long.parseLong(alljoyn.getV_uint32(arg.getVal().getV_uint32())));
                     break;
 
                 case 'x':
-                    args.put(i, alljoyn.getV_int64(arg.getVal().getV_int64()));
+                    args.put(i, Long.parseLong(alljoyn.getV_int64(arg.getVal().getV_int64())));
                     break;
 
                 case 'y':
-                    args.put(i, alljoyn.getV_byte(arg.getVal().getV_byte()));
+                    args.put(i, Integer.parseInt(alljoyn.getV_byte(arg.getVal().getV_byte())));
                     break;
             }
         }

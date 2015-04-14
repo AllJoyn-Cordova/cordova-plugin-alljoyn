@@ -5,58 +5,117 @@
 %{
 #define SWIG_FILE_WITH_INIT
 #include <alljoyn.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+static char buffer[64];
 %}
 
 %apply unsigned short {uint8_t}
 %apply unsigned int {uint16_t}
 %apply unsigned long {uint32_t}
+%apply unsigned long {uint64_t}
 %rename(_AJ_Message) AJ_Message;
 
 %inline %{
 
-uint32_t getV_bool(uint32_t* val) 
+const char* getV_bool(uint32_t* v_data) 
 {
-	return *val;
+	sprintf(buffer, "%u", *v_data);
+	return buffer;
 }
 
-uint8_t getV_byte(uint8_t* val) 
+const char* getV_byte(uint8_t* v_data) 
 {
-	return *val;
+	sprintf(buffer, "%u", *v_data);
+	return buffer;
 }
 
-uint16_t getV_uint16(uint16_t* val) 
+const char* getV_uint16(uint16_t* v_data) 
 {
-	return *val;
+	sprintf(buffer, "%u", *v_data);
+	return buffer;
 }
 
-uint32_t getV_uint32(uint32_t* val) 
+const char* getV_uint32(uint32_t* v_data) 
 {
-	return *val;
+	sprintf(buffer, "%u", *v_data);
+	return buffer;
 }
 
-uint64_t getV_uint64(uint64_t* val) 
+const char* getV_uint64(uint64_t* v_data) 
 {
-	return *val;
+	sprintf(buffer, "%lu", *v_data);
+	return buffer;
 }
 
-int16_t getV_int16(int16_t* val) 
+const char* getV_int16(int16_t* v_data) 
 {
-	return *val;
+	sprintf(buffer, "%d", *v_data);
+	return buffer;
 }
 
-int32_t getV_int32(int32_t* val) 
+const char* getV_int32(int32_t* v_data) 
 {
-	return *val;
+	sprintf(buffer, "%d", *v_data);
+	return buffer;
 }
 
-int64_t getV_int64(int64_t* val) 
+const char* getV_int64(int64_t* v_data) 
 {
-	return *val;
+	sprintf(buffer, "%ld", *v_data);
+	return buffer;
 }
 
-double getV_double(double* val) 
+const char* getV_double(double* v_data) 
 {
-	return *val;
+	sprintf(buffer, "%f", *v_data);
+	return buffer;
+}
+
+void setV_bool(uint32_t* v_data, const char* val)
+{
+	*v_data = atoi(val);
+}
+
+void setV_byte(uint8_t* v_data, const char* val) 
+{
+	*v_data = atoi(val);
+}
+
+void setV_uint16(uint16_t* v_data, const char* val) 
+{
+	*v_data = atoi(val);
+}
+
+void setV_uint32(uint32_t* v_data, const char* val) 
+{
+	*v_data = atoi(val);
+}
+
+void setV_uint64(uint64_t* v_data, const char* val) 
+{
+	*v_data = atol(val);
+}
+
+void setV_int16(int16_t* v_data, const char* val) 
+{
+	*v_data = atoi(val);
+}
+
+void setV_int32(int32_t* v_data, const char* val) 
+{
+	*v_data = atoi(val);
+}
+
+void setV_int64(int64_t* v_data, const char* val) 
+{
+	*v_data = atol(val);
+}
+
+void setV_double(double* v_data, const char* val) 
+{
+	*v_data = atof(val);
 }
 
 %}
