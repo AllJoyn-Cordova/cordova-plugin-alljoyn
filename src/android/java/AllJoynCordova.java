@@ -33,7 +33,6 @@ public class AllJoynCordova extends CordovaPlugin
     private static final short  CONTACT_PORT=42;
     private static final String DAEMON_AUTH = "ALLJOYN_PIN_KEYX";
     private static final String DAEMON_PWD = "1234"; // 000000 or 1234
-    private AJ_BusAttachment bus;
 
     private static final long AJ_MESSAGE_SLOW_LOOP_INTERVAL = 500;
     private static final long AJ_MESSAGE_FAST_LOOP_INTERVAL = 50;
@@ -45,6 +44,9 @@ public class AllJoynCordova extends CordovaPlugin
     private static final long AJ_RED_ID_FLAG = 0x80;
     private static final long AJ_METHOD_JOIN_SESSION = ((long)(((long)alljoynConstants.AJ_BUS_ID_FLAG) << 24) | (((long)(1)) << 16) | (((long)(0)) << 8) | (10));
 
+    private AJ_BusAttachment bus;
+    private AJ_Object proxyObjects;
+    private AJ_Object appObjects;
     private Timer m_pTimer = null;
     private boolean m_bStartTimer = false;
     private HashMap m_pMessageHandlers = new HashMap<String, String>();
@@ -63,6 +65,8 @@ public class AllJoynCordova extends CordovaPlugin
         Log.i(TAG, "Initialization running.");
         alljoyn.AJ_Initialize();
         bus = new AJ_BusAttachment();
+        proxyObjects = new AJ_Object();
+        appObjects = new AJ_Object();
 
         // Initialize timer for msg loop
         m_pTimer = new Timer();
@@ -322,24 +326,11 @@ public class AllJoynCordova extends CordovaPlugin
                             alljoyn.AJ_UnmarshalArg(pMsg, arg);
                             Log.i(TAG, "FoundAdvertisedName(" + arg.getVal().getV_string() + ")");
 
-                            // Init responseDictionary
+                            // Send results
                             JSONObject responseDictionary = new JSONObject();
                             responseDictionary.put("name", arg.getVal().getV_string());
                             responseDictionary.put("sender", pMsg.getSender());
-
-                            // Init message info
-                            JSONObject msgInfo = getMsgInfo(pMsg);
-
-                            // Init callback results
-                            JSONArray callbackResults = new JSONArray();
-                            callbackResults.put(msgInfo);
-                            callbackResults.put(responseDictionary);
-                            callbackResults.put(null);
-
-                            // Send plugin result
-                            PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, callbackResults);
-                            pluginResult.setKeepCallback(true);
-                            this.callbackContext.sendPluginResult(pluginResult);
+                            sendSuccessDictionary(responseDictionary, this.callbackContext, true, pMsg);
                             return true;
                         }
                     }
@@ -431,7 +422,7 @@ public class AllJoynCordova extends CordovaPlugin
                 msgId,
                 new MsgHandler(callbackContext)
                 {
-                    public boolean callback(_AJ_Message pMsg)
+                    public boolean callback(_AJ_Message pMsg) throws JSONException
                     {
                         m_pMessageHandlers.remove(msgId);
                         this.callbackContext.success("Yay!");
@@ -498,30 +489,22 @@ public class AllJoynCordova extends CordovaPlugin
 
                                 if (replyCode == alljoynConstants.AJ_JOINSESSION_REPLY_SUCCESS)
                                 {
-                                    // Init callback results
-                                    JSONArray callbackResults = new JSONArray();
-                                    callbackResults.put(sessionId);
-                                    callbackResults.put(name);
-
-                                    // Send plugin result
-                                    PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, callbackResults);
-                                    pluginResult.setKeepCallback(false);
-                                    this.callbackContext.sendPluginResult(pluginResult);
+                                    // Init responseArray
+                                    JSONArray responseArray = new JSONArray();
+                                    responseArray.put(sessionId);
+                                    responseArray.put(name);
+                                    sendSuccessArray(responseArray, this.callbackContext, false, pMsg);
                                     return true;
                                 }
                                 else
                                 {
                                     if (replyCode == alljoynConstants.AJ_JOINSESSION_REPLY_ALREADY_JOINED)
                                     {
-                                        // Init callback results
-                                        JSONArray callbackResults = new JSONArray();
-                                        callbackResults.put(pMsg.getSessionId());
-                                        callbackResults.put(name);
-
-                                        // Send plugin result
-                                        PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, callbackResults);
-                                        pluginResult.setKeepCallback(false);
-                                        this.callbackContext.sendPluginResult(pluginResult);
+                                        // Init responseArray
+                                        JSONArray responseArray = new JSONArray();
+                                        responseArray.put(pMsg.getSessionId());
+                                        responseArray.put(name);
+                                        sendSuccessArray(responseArray, this.callbackContext, false, pMsg);
                                         return true;
                                     }
                                     else
@@ -564,17 +547,141 @@ public class AllJoynCordova extends CordovaPlugin
         else if (action.equals("invokeMember"))
         {
             Log.i(TAG, "AllJoyn.invokeMember");
+            long sessionId = data.getLong(0);
+            String destination = data.getString(1);
+            String signature = data.getString(2);
+            String path = data.getString(3);
+            JSONArray indexList = data.getJSONArray(4);
+            String parameterTypes = data.getString(5);
+            JSONArray parameters = data.getJSONArray(6);
+            final String outParameterSignature = data.getString(7);
+            boolean isOwnSession = false;
             AJ_Status status = AJ_Status.AJ_OK;
 
-            if ( status == AJ_Status.AJ_OK)
+            if (signature == null || indexList == null)
             {
-                callbackContext.success("Yay!");
-                return true;
+                callbackContext.error("invokeMember: Invalid Argument");
+                return false;
+            }
+
+            if (indexList.length() < 4)
+            {
+                callbackContext.error("invokeMember: Expected 4 indices in indexList");
+                return false;
+            }
+
+            int listIndex = indexList.getInt(0);
+            int objectIndex = indexList.getInt(1);
+            int interfaceIndex = indexList.getInt(2);
+            int memberIndex = indexList.getInt(3);
+
+            if (sessionId == 0)
+            {
+                Log.i(TAG, "SessionId is 0, overriding listIndex to 1");
+                listIndex = 1;
+                isOwnSession = true;
+            }
+
+            long msgId = AJ_Encode_Message_ID(listIndex, objectIndex, interfaceIndex, memberIndex);
+            Log.i(TAG, "Message id: " + msgId);
+
+            SWIGTYPE_p_p_char memberSignature = new SWIGTYPE_p_p_char();
+            SWIGTYPE_p_uint8_t isSecure = new SWIGTYPE_p_uint8_t();
+
+            AJ_MemberType memberType = alljoyn.AJ_GetMemberType(msgId, memberSignature, isSecure);
+            _AJ_Message msg = new _AJ_Message();
+
+            if (path != null && path.length() > 0 && !path.equals("null")) // Checking null parameter passed from JS layer
+            {
+                status = alljoyn.AJ_SetProxyObjectPath(proxyObjects, msgId, path);
+
+                if(status != AJ_Status.AJ_OK)
+                {
+                    Log.i(TAG, "AJ_SetProxyObjectPath failed with " + alljoyn.AJ_StatusText(status));
+                    callbackContext.error("InvokeMember failure: " + alljoyn.AJ_StatusText(status));
+                }
+            }
+
+            String destinationChars = "";
+
+            if (destination != null)
+            {
+                destinationChars = destination;
+            }
+
+            if (memberType == AJ_MemberType.AJ_METHOD_MEMBER)
+            {
+                status = alljoyn.AJ_MarshalMethodCall(bus, msg, msgId, destinationChars, sessionId, 0, 0);
+
+                if (status != AJ_Status.AJ_OK)
+                {
+                    Log.i(TAG, "Failure marshalling method call");
+                    callbackContext.error("InvokeMember failure: " + alljoyn.AJ_StatusText(status));
+                }
+
+                if (parameterTypes != null && parameterTypes.length() > 0 && !parameterTypes.equals("null"))
+                {
+                    status = MarshalArgs(msg, parameterTypes, parameters);
+                }
+            }
+            else if (memberType == AJ_MemberType.AJ_SIGNAL_MEMBER)
+            {
+
+            }
+            else if (memberType == AJ_MemberType.AJ_PROPERTY_MEMBER)
+            {
             }
             else
             {
-                callbackContext.error("Error: " + status.toString());
-                return false;
+                status = AJ_Status.AJ_ERR_FAILURE;
+            }
+
+            if (AJ_Status.AJ_OK == status)
+            {
+                status = alljoyn.AJ_DeliverMsg(msg);
+
+                if (memberType != AJ_MemberType.AJ_SIGNAL_MEMBER)
+                {
+                    final long replyMsgId = AJ_Reply_ID(msgId);
+
+                    m_pMessageHandlers.put
+                    (
+                        replyMsgId,
+                        new MsgHandler(callbackContext)
+                        {
+                            public boolean callback(_AJ_Message pMsg) throws JSONException
+                            {
+                                AJ_Status status = AJ_Status.AJ_OK;
+                                JSONArray outValues = null;
+                                m_pMessageHandlers.remove(replyMsgId);
+
+                                if (pMsg == null || pMsg.getHdr() == null || pMsg.getHdr().getMsgType() == alljoynConstants.AJ_MSG_ERROR)
+                                {
+                                    // Error
+                                    callbackContext.error("Error" + alljoyn.AJ_StatusText(status));
+                                    return true;
+                                }
+
+                                if (outParameterSignature != null && outParameterSignature.length() > 0 && !outParameterSignature.equals("null"))
+                                {
+                                    outValues = UnmarshalArgs(pMsg, outParameterSignature);
+                                    status = AJ_Status.AJ_OK;
+                                }
+
+                                if (status != AJ_Status.AJ_OK)
+                                {
+                                    callbackContext.error("Failure unmarshalling response: " + alljoyn.AJ_StatusText(status));
+                                    return true;
+                                }
+
+                                sendSuccessArray(outValues, this.callbackContext, false, pMsg);
+                                return true;
+                            }
+                        }
+                    );
+                }
+
+                return (AJ_Status.AJ_OK == status);
             }
         }
 
@@ -618,6 +725,40 @@ public class AllJoynCordova extends CordovaPlugin
         return msgInfo;
     }
 
+    void sendSuccessArray(JSONArray argumentValues, CallbackContext callbackContext, boolean keepCallback, _AJ_Message pMsg) throws JSONException
+    {
+        // Init message info
+        JSONObject msgInfo = getMsgInfo(pMsg);
+
+        // Init callback results
+        JSONArray callbackResults = new JSONArray();
+        callbackResults.put(msgInfo);
+        callbackResults.put(argumentValues);
+        callbackResults.put(null);
+
+        // Send plugin result
+        PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, callbackResults);
+        pluginResult.setKeepCallback(keepCallback);
+        callbackContext.sendPluginResult(pluginResult);
+    }
+
+    void sendSuccessDictionary(JSONObject argumentValues, CallbackContext callbackContext, boolean keepCallback, _AJ_Message pMsg) throws JSONException
+    {
+        // Init message info
+        JSONObject msgInfo = getMsgInfo(pMsg);
+
+        // Init callback results
+        JSONArray callbackResults = new JSONArray();
+        callbackResults.put(msgInfo);
+        callbackResults.put(argumentValues);
+        callbackResults.put(null);
+
+        // Send plugin result
+        PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, callbackResults);
+        pluginResult.setKeepCallback(keepCallback);
+        callbackContext.sendPluginResult(pluginResult);
+    }
+
     public abstract class MsgHandler
     {
         public CallbackContext callbackContext;
@@ -646,6 +787,11 @@ public class AllJoynCordova extends CordovaPlugin
             SWIGTYPE_p_int32_t p_int32_t = new SWIGTYPE_p_int32_t();
             SWIGTYPE_p_int64_t p_int64_t = new SWIGTYPE_p_int64_t();
             SWIGTYPE_p_double p_double = new SWIGTYPE_p_double();
+
+            if (i == args.length())
+            {
+                return status;
+            }
 
             switch (signature.charAt(i))
             {
@@ -688,6 +834,11 @@ public class AllJoynCordova extends CordovaPlugin
                 case 'y':
                     alljoyn.setV_byte(p_uint8_t, args.get(i).toString());
                     arg.getVal().setV_byte(p_uint8_t);
+                    status = alljoyn.AJ_MarshalArg(pMsg, arg);
+                    break;
+
+                case 's':
+                    arg.getVal().setV_string(args.getString(i));
                     status = alljoyn.AJ_MarshalArg(pMsg, arg);
                     break;
             }
@@ -734,6 +885,10 @@ public class AllJoynCordova extends CordovaPlugin
 
                 case 'y':
                     args.put(i, Integer.parseInt(alljoyn.getV_byte(arg.getVal().getV_byte())));
+                    break;
+
+                case 's':
+                    args.put(i, arg.getVal().getV_string());
                     break;
             }
         }
