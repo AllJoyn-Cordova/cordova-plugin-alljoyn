@@ -788,60 +788,57 @@ public class AllJoynCordova extends CordovaPlugin
             SWIGTYPE_p_int64_t p_int64_t = new SWIGTYPE_p_int64_t();
             SWIGTYPE_p_double p_double = new SWIGTYPE_p_double();
 
-            if (i == args.length())
+            if (i == args.length() || args.get(i).equals(null))
             {
                 return status;
             }
 
-            switch (signature.charAt(i))
+            char typeId = signature.charAt(i);
+
+            switch (typeId)
             {
                 case 'i':
                     alljoyn.setV_int32(p_int32_t, args.get(i).toString());
                     arg.getVal().setV_int32(p_int32_t);
-                    status = alljoyn.AJ_MarshalArg(pMsg, arg);
                     break;
 
                 case 'n':
                     alljoyn.setV_int16(p_int16_t, args.get(i).toString());
                     arg.getVal().setV_int16(p_int16_t);
-                    status = alljoyn.AJ_MarshalArg(pMsg, arg);
                     break;
 
                 case 'q':
                     alljoyn.setV_uint16(p_uint16_t, args.get(i).toString());
                     arg.getVal().setV_uint16(p_uint16_t);
-                    status = alljoyn.AJ_MarshalArg(pMsg, arg);
                     break;
 
                 case 't':
                     alljoyn.setV_uint64(p_uint64_t, args.get(i).toString());
                     arg.getVal().setV_uint64(p_uint64_t);
-                    status = alljoyn.AJ_MarshalArg(pMsg, arg);
                     break;
 
                 case 'u':
                     alljoyn.setV_uint32(p_uint32_t, args.get(i).toString());
                     arg.getVal().setV_uint32(p_uint32_t);
-                    status = alljoyn.AJ_MarshalArg(pMsg, arg);
                     break;
 
                 case 'x':
                     alljoyn.setV_int64(p_int64_t, args.get(i).toString());
                     arg.getVal().setV_int64(p_int64_t);
-                    status = alljoyn.AJ_MarshalArg(pMsg, arg);
                     break;
 
                 case 'y':
                     alljoyn.setV_byte(p_uint8_t, args.get(i).toString());
                     arg.getVal().setV_byte(p_uint8_t);
-                    status = alljoyn.AJ_MarshalArg(pMsg, arg);
                     break;
 
                 case 's':
                     arg.getVal().setV_string(args.getString(i));
-                    status = alljoyn.AJ_MarshalArg(pMsg, arg);
                     break;
             }
+
+            alljoyn.AJ_InitArg(arg, typeId, 0, arg.getVal().getV_data(), 0);
+            status = alljoyn.AJ_MarshalArg(pMsg, arg);
         }
 
         return status;
