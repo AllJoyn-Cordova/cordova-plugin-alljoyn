@@ -482,9 +482,9 @@ public class AllJoynCordova extends CordovaPlugin
                             }
                             else
                             {
-                                JSONArray args = UnmarshalArgs(pMsg, "uu");
-                                replyCode = args.getLong(0);
-                                sessionId = args.getLong(1);
+                                JSONArray args = AJ_UnmarshalArgs(pMsg, "uu");
+                                replyCode = args.getJSONArray(1).getLong(0);
+                                sessionId = args.getJSONArray(1).getLong(1);
                                 Log.i(TAG, "replyCode=" + replyCode +  " sessionId=" + sessionId);
 
                                 if (replyCode == alljoynConstants.AJ_JOINSESSION_REPLY_SUCCESS)
@@ -664,8 +664,8 @@ public class AllJoynCordova extends CordovaPlugin
 
                                 if (outParameterSignature != null && outParameterSignature.length() > 0 && !outParameterSignature.equals("null"))
                                 {
-                                    outValues = UnmarshalArgs(pMsg, outParameterSignature);
-                                    status = AJ_Status.AJ_OK;
+                                    outValues = AJ_UnmarshalArgs(pMsg, outParameterSignature);
+                                    status = (AJ_Status)outValues.get(0);
                                 }
 
                                 if (status != AJ_Status.AJ_OK)
@@ -771,6 +771,125 @@ public class AllJoynCordova extends CordovaPlugin
         public abstract boolean callback(_AJ_Message pMsg) throws JSONException;
     }
 
+    // --------------------------------------------------------------------------
+    // Marshal and Unmarshal
+    // --------------------------------------------------------------------------
+
+    private static final int AJ_SCALAR         = 0x10;
+    private static final int AJ_CONTAINER      = 0x20;
+    private static final int AJ_STRING         = 0x40;
+    private static final int AJ_VARIANT        = 0x80;
+
+    /**
+     * Characterizes the various argument types
+     */
+    static final int TypeFlags[] = new int[]
+    {
+        0x08 | AJ_CONTAINER,  /* AJ_ARG_STRUCT            '('  */
+        0,                    /*                          ')'  */
+        0x04 | AJ_CONTAINER,  /* AJ_ARG_ARRAY             'a'  */
+        0x04 | AJ_SCALAR,     /* AJ_ARG_BOOLEAN           'b'  */
+        0,
+        0x08 | AJ_SCALAR,     /* AJ_ARG_DOUBLE            'd'  */
+        0,
+        0,
+        0x01 | AJ_STRING,     /* AJ_ARG_SIGNATURE         'g'  */
+        0x04 | AJ_SCALAR,     /* AJ_ARG_HANDLE            'h'  */
+        0x04 | AJ_SCALAR,     /* AJ_ARG_INT32             'i'  */
+        0,
+        0,
+        0,
+        0,
+        0x02 | AJ_SCALAR,     /* AJ_ARG_INT16             'n'  */
+        0x04 | AJ_STRING,     /* AJ_ARG_OBJ_PATH          'o'  */
+        0,
+        0x02 | AJ_SCALAR,     /* AJ_ARG_UINT16            'q'  */
+        0,
+        0x04 | AJ_STRING,     /* AJ_ARG_STRING            's'  */
+        0x08 | AJ_SCALAR,     /* AJ_ARG_UINT64            't'  */
+        0x04 | AJ_SCALAR,     /* AJ_ARG_UINT32            'u'  */
+        0x01 | AJ_VARIANT,    /* AJ_ARG_VARIANT           'v'  */
+        0,
+        0x08 | AJ_SCALAR,     /* AJ_ARG_INT64             'x'  */
+        0x01 | AJ_SCALAR,     /* AJ_ARG_BYTE              'y'  */
+        0,
+        0x08 | AJ_CONTAINER,  /* AJ_ARG_DICT_ENTRY        '{'  */
+        0,
+        0                     /*                          '}'  */
+    };
+
+    /*
+    * Message argument types
+    */
+    private static final int AJ_ARG_INVALID             = '\0';     /**< AllJoyn invalid type */
+    private static final int AJ_ARG_ARRAY               = 'a';      /**< AllJoyn array container type */
+    private static final int AJ_ARG_BOOLEAN             = 'b';      /**< AllJoyn boolean basic type */
+    private static final int AJ_ARG_DOUBLE              = 'd';      /**< AllJoyn IEEE 754 double basic type */
+    private static final int AJ_ARG_SIGNATURE           = 'g';      /**< AllJoyn signature basic type */
+    private static final int AJ_ARG_HANDLE              = 'h';      /**< AllJoyn socket handle basic type */
+    private static final int AJ_ARG_INT32               = 'i';      /**< AllJoyn 32-bit signed integer basic type */
+    private static final int AJ_ARG_INT16               = 'n';      /**< AllJoyn 16-bit signed integer basic type */
+    private static final int AJ_ARG_OBJ_PATH            = 'o';      /**< AllJoyn Name of an AllJoyn object instance basic type */
+    private static final int AJ_ARG_UINT16              = 'q';      /**< AllJoyn 16-bit unsigned integer basic type */
+    private static final int AJ_ARG_STRING              = 's';      /**< AllJoyn UTF-8 NULL terminated string basic type */
+    private static final int AJ_ARG_UINT64              = 't';      /**< AllJoyn 64-bit unsigned integer basic type */
+    private static final int AJ_ARG_UINT32              = 'u';      /**< AllJoyn 32-bit unsigned integer basic type */
+    private static final int AJ_ARG_VARIANT             = 'v';      /**< AllJoyn variant container type */
+    private static final int AJ_ARG_INT64               = 'x';      /**< AllJoyn 64-bit signed integer basic type */
+    private static final int AJ_ARG_BYTE                = 'y';      /**< AllJoyn 8-bit unsigned integer basic type */
+    private static final int AJ_ARG_STRUCT              = '(';      /**< AllJoyn struct container type */
+    private static final int AJ_ARG_DICT_ENTRY          = '{';      /**< AllJoyn dictionary or map container type - an array of key-value pairs */
+    private static final int AJ_STRUCT_CLOSE            = ')';
+    private static final int AJ_DICT_ENTRY_CLOSE        = '}';
+
+    /**
+     * This macro makes sure that the signature contains valid characters
+     * in the TypeFlags array. If the index passed is below ascii 'a'
+     * or above ascii '}' and not ascii '(' or ')' then the signature is invalid.
+     * Below is the macro broken into smaller chunks:
+     *
+     * ((t) == '(' || (t) == ')') ? (t) - '('       --> If the value is ) or (, get the value in TypeFlags
+     * :
+     * (((t) < 'a' || (t) > '}') ? '}' + 2 - 'a'    --> The value is too high or too low, return TypeFlags[30] (0)
+     * :
+     * (t) + 2 - 'a'                                --> The value is valid, get the value in TypeFlags
+     */
+    int TYPE_FLAG(char typeId)
+    {
+        return TypeFlags[((typeId) == '(' || (typeId) == ')') ? (typeId) - '(' : (((typeId) < 'a' || (typeId) > '}') ? '}' + 2 - 'a' : (typeId) + 2 - 'a') ];
+    }
+
+    boolean AJ_IsContainerType(char typeId)
+    {
+        return (TYPE_FLAG(typeId) & AJ_CONTAINER) != 0;
+    }
+
+    /*
+     *  Returns true if the specified type is represented as a number
+     */
+    boolean AJ_IsScalarType(char typeId)
+    {
+        return (TYPE_FLAG(typeId) & AJ_SCALAR) != 0;
+    }
+
+    boolean AJ_IsStringType(char typeId)
+    {
+        return (TYPE_FLAG(typeId) & AJ_STRING) != 0;
+    }
+
+    /*
+     * A basic type is a scalar or one of the string types
+     */
+    boolean AJ_IsBasicType(char typeId)
+    {
+        return (TYPE_FLAG(typeId) & (AJ_STRING | AJ_SCALAR)) != 0;
+    }
+
+    int AJ_GetTypeSize(char typeId)
+    {
+        return (TYPE_FLAG(typeId) & 0xF);
+    }
+
     public AJ_Status MarshalArgs(_AJ_Message pMsg, String signature, JSONArray args) throws JSONException
     {
         AJ_Status status = AJ_Status.AJ_OK;
@@ -844,52 +963,228 @@ public class AllJoynCordova extends CordovaPlugin
         return status;
     }
 
-    public JSONArray UnmarshalArgs(_AJ_Message pMsg, String signature) throws JSONException
+    AJ_Status UnmarshalArgs(_AJ_Message msg, StringBuffer sig, JSONArray args, StringBuffer nested)
     {
-        JSONArray args = new JSONArray();
-        AJ_Status status = AJ_Status.AJ_OK;
+        _AJ_Arg structArg = new _AJ_Arg();
         _AJ_Arg arg = new _AJ_Arg();
+        AJ_Status status = AJ_Status.AJ_OK;
 
-        for (int i = 0; i < signature.length(); i++)
+        while (sig.length() != 0)
         {
-            alljoyn.AJ_UnmarshalArg(pMsg, arg);
+            char typeId = sig.charAt(0);
+            nested.append(typeId);
+            sig.deleteCharAt(0);
+            char nextTypeId = (sig.length() == 0) ? '\0' : sig.charAt(0);
 
-            switch (signature.charAt(i))
+            if (!AJ_IsBasicType(typeId))
             {
-                case 'i':
-                    args.put(i, Integer.parseInt(alljoyn.getV_int32(arg.getVal().getV_int32())));
-                    break;
+                if ((typeId == AJ_ARG_STRUCT) || (typeId == AJ_ARG_DICT_ENTRY))
+                {
+                    status = alljoyn.AJ_UnmarshalContainer(msg, structArg, typeId);
 
-                case 'n':
-                    args.put(i, Integer.parseInt(alljoyn.getV_int16(arg.getVal().getV_int16())));
-                    break;
+                    if (status != AJ_Status.AJ_OK)
+                    {
+                        break;
+                    }
 
-                case 'q':
-                    args.put(i, Integer.parseInt(alljoyn.getV_uint16(arg.getVal().getV_uint16())));
-                    break;
+                    status = UnmarshalArgs(msg, sig, args, nested);
 
-                case 't':
-                    args.put(i, Long.parseLong(alljoyn.getV_uint64(arg.getVal().getV_uint64())));
-                    break;
+                    if (status == AJ_Status.AJ_OK)
+                    {
+                        int lastNestedTypeId = nested.charAt(nested.length() - 1);
 
-                case 'u':
-                    args.put(i, Long.parseLong(alljoyn.getV_uint32(arg.getVal().getV_uint32())));
-                    break;
+                        if ((lastNestedTypeId == AJ_STRUCT_CLOSE) || (lastNestedTypeId == AJ_DICT_ENTRY_CLOSE))
+                        {
+                            status = alljoyn.AJ_UnmarshalCloseContainer(msg, structArg);
+                            nested.deleteCharAt(nested.length() - 1);
 
-                case 'x':
-                    args.put(i, Long.parseLong(alljoyn.getV_int64(arg.getVal().getV_int64())));
-                    break;
+                            if (status != AJ_Status.AJ_OK)
+                            {
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            status = AJ_Status.AJ_ERR_MARSHAL;
+                            break;
+                        }
 
-                case 'y':
-                    args.put(i, Integer.parseInt(alljoyn.getV_byte(arg.getVal().getV_byte())));
-                    break;
+                        continue;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
 
-                case 's':
-                    args.put(i, arg.getVal().getV_string());
+                if ((typeId == AJ_STRUCT_CLOSE) || (typeId == AJ_DICT_ENTRY_CLOSE))
+                {
                     break;
+                }
+
+                if (typeId == AJ_ARG_VARIANT)
+                {
+                    StringBuffer inSig = new StringBuffer();
+                    status = AJ_UnmarshalVariant(msg, inSig);
+                    args.put(inSig.toString());
+                    status = UnmarshalArgs(msg, inSig, args, nested);
+
+                    if (status != AJ_Status.AJ_OK)
+                    {
+                        break;
+                    }
+
+                    continue;
+                }
+
+                if ((typeId == AJ_ARG_ARRAY) && !AJ_IsBasicType(nextTypeId))
+                {
+                    _AJ_Arg arrayArg = new _AJ_Arg();
+                    String subSig = new String();
+                    char closeContainer = (nextTypeId == '(') ? ')' : '}';
+                    subSig = sig.toString();
+                    status = alljoyn.AJ_UnmarshalContainer(msg, arrayArg, AJ_ARG_ARRAY);
+                    JSONArray vArgs = new JSONArray();
+
+                    do
+                    {
+                        StringBuffer inSig = new StringBuffer(subSig);
+                        StringBuffer inNested = new StringBuffer();
+                        JSONArray inArgs = new JSONArray();
+                        status = UnmarshalArgs(msg, inSig, inArgs, inNested);
+                        int len = inArgs.length();
+
+                        if (len != 0)
+                        {
+                            vArgs.put(inArgs);
+                        }
+                    }
+                    while (status == AJ_Status.AJ_OK);
+
+                    int len = vArgs.length();
+                    args.put(vArgs);
+                    status = alljoyn.AJ_UnmarshalCloseContainer(msg, arrayArg);
+
+                    if (status != AJ_Status.AJ_OK)
+                    {
+                        break;
+                    }
+
+                    sig.delete(0, subSig.length());
+                    continue;
+                }
+
+                Log.i(TAG, "AJ_UnmarshalArgs(): AJ_ERR_UNEXPECTED");
+                status = AJ_Status.AJ_ERR_UNEXPECTED;
+                break;
+            }
+            else // scalar and string
+            {
+                status = alljoyn.AJ_UnmarshalArg(msg, arg);
+
+                if (status != AJ_Status.AJ_OK)
+                {
+                    break;
+                }
+
+                if (arg.getTypeId() != typeId)
+                {
+                    Log.i(TAG, "AJ_UnmarshalArgs(): AJ_ERR_UNMARSHAL");
+                    status = AJ_Status.AJ_ERR_UNMARSHAL;
+                    break;
+                }
+
+                if (AJ_IsScalarType(typeId))
+                {
+                    int sizeOfType = (TYPE_FLAG(typeId) & 0xF);
+
+                    switch (sizeOfType)
+                    {
+                        case 1:
+                            args.put(Integer.parseInt(alljoyn.getV_byte(arg.getVal().getV_byte())));
+                            break;
+
+                        case 2:
+                            if (typeId == 'n')
+                            {
+                                args.put(Integer.parseInt(alljoyn.getV_uint16(arg.getVal().getV_uint16())));
+                            }
+                            else
+                            {
+                                args.put(Integer.parseInt(alljoyn.getV_uint16(arg.getVal().getV_uint16())) & 0xFFFF);
+                            }
+                            break;
+
+                        case 4:
+                            if (typeId == 'i')
+                            {
+                                args.put(Long.parseLong(alljoyn.getV_uint32(arg.getVal().getV_uint32())));
+                            }
+                            else
+                            {
+                                args.put(Long.parseLong(alljoyn.getV_uint32(arg.getVal().getV_uint32())) & 0xFFFFFFFF);
+                            }
+                            break;
+
+                        case 8:
+                            if (typeId == 'd')
+                            {
+                                try
+                                {
+                                    args.put(Double.parseDouble(alljoyn.getV_double(arg.getVal().getV_double())));
+                                }
+                                catch (Exception e)
+                                {
+                                    Log.i(TAG, "AJ_UnmarshalArgs(): AJ_ERR_READ");
+                                    return AJ_Status.AJ_ERR_READ;
+                                }
+                            }
+                            else if (typeId == 'x')
+                            {
+                                args.put(Long.parseLong(alljoyn.getV_uint64(arg.getVal().getV_uint64())));
+                            }
+                            else
+                            {
+                                // TODO: handle big unsigned values
+                                args.put(Long.parseLong(alljoyn.getV_uint64(arg.getVal().getV_uint64())));
+                            }
+                            break;
+                    }
+                }
+                else
+                {
+                    args.put(arg.getVal().getV_string());
+                }
             }
         }
 
-        return args;
+        return status;
+    }
+
+    JSONArray AJ_UnmarshalArgs(_AJ_Message msg, String signature)
+    {
+        JSONArray args = new JSONArray();
+        AJ_Status status = UnmarshalArgs(msg, new StringBuffer(signature), args, new StringBuffer());
+        JSONArray retObj = new JSONArray();
+        retObj.put(status);
+        retObj.put(args);
+
+        return retObj;
+    }
+
+    AJ_Status AJ_UnmarshalVariant(_AJ_Message msg, StringBuffer sig)
+    {
+        _AJ_Arg arg = new _AJ_Arg();
+        AJ_Status status = alljoyn.AJ_UnmarshalArg(msg, arg);
+
+        if (status == AJ_Status.AJ_OK)
+        {
+            if (sig != null)
+            {
+                sig.append(arg.getVal().getV_string());
+            }
+        }
+
+        return status;
     }
 }
