@@ -623,7 +623,7 @@ public class AllJoynCordova extends CordovaPlugin
 
                 if (parameterTypes != null && parameterTypes.length() > 0 && !parameterTypes.equals("null"))
                 {
-                    status = MarshalArgs(msg, parameterTypes, parameters);
+                    status = AJ_MarshalArgs(msg, parameterTypes, parameters);
                 }
             }
             else if (memberType == AJ_MemberType.AJ_SIGNAL_MEMBER)
@@ -653,7 +653,7 @@ public class AllJoynCordova extends CordovaPlugin
 
                 if (parameterTypes != null && parameterTypes.length() > 0)
                 {
-                    status = MarshalArgs(msg, parameterTypes, parameters);
+                    status = AJ_MarshalArgs(msg, parameterTypes, parameters);
 
                     if (status != AJ_Status.AJ_OK)
                     {
@@ -924,79 +924,6 @@ public class AllJoynCordova extends CordovaPlugin
     int AJ_GetTypeSize(char typeId)
     {
         return (TYPE_FLAG(typeId) & 0xF);
-    }
-
-    public AJ_Status MarshalArgs(_AJ_Message pMsg, String signature, JSONArray args) throws JSONException
-    {
-        AJ_Status status = AJ_Status.AJ_OK;
-
-        for (int i = 0; i < signature.length(); i++)
-        {
-            _AJ_Arg arg = new _AJ_Arg();
-            SWIGTYPE_p_uint32_t p_bool = new SWIGTYPE_p_uint32_t();
-            SWIGTYPE_p_uint8_t p_uint8_t = new SWIGTYPE_p_uint8_t();
-            SWIGTYPE_p_uint16_t p_uint16_t = new SWIGTYPE_p_uint16_t();
-            SWIGTYPE_p_uint32_t p_uint32_t = new SWIGTYPE_p_uint32_t();
-            SWIGTYPE_p_uint64_t p_uint64_t = new SWIGTYPE_p_uint64_t();
-            SWIGTYPE_p_int16_t p_int16_t = new SWIGTYPE_p_int16_t();
-            SWIGTYPE_p_int32_t p_int32_t = new SWIGTYPE_p_int32_t();
-            SWIGTYPE_p_int64_t p_int64_t = new SWIGTYPE_p_int64_t();
-            SWIGTYPE_p_double p_double = new SWIGTYPE_p_double();
-
-            if (i == args.length() || args.get(i).equals(null))
-            {
-                return status;
-            }
-
-            char typeId = signature.charAt(i);
-
-            switch (typeId)
-            {
-                case 'i':
-                    alljoyn.setV_int32(p_int32_t, args.get(i).toString());
-                    arg.getVal().setV_int32(p_int32_t);
-                    break;
-
-                case 'n':
-                    alljoyn.setV_int16(p_int16_t, args.get(i).toString());
-                    arg.getVal().setV_int16(p_int16_t);
-                    break;
-
-                case 'q':
-                    alljoyn.setV_uint16(p_uint16_t, args.get(i).toString());
-                    arg.getVal().setV_uint16(p_uint16_t);
-                    break;
-
-                case 't':
-                    alljoyn.setV_uint64(p_uint64_t, args.get(i).toString());
-                    arg.getVal().setV_uint64(p_uint64_t);
-                    break;
-
-                case 'u':
-                    alljoyn.setV_uint32(p_uint32_t, args.get(i).toString());
-                    arg.getVal().setV_uint32(p_uint32_t);
-                    break;
-
-                case 'x':
-                    alljoyn.setV_int64(p_int64_t, args.get(i).toString());
-                    arg.getVal().setV_int64(p_int64_t);
-                    break;
-
-                case 'y':
-                    alljoyn.setV_byte(p_uint8_t, args.get(i).toString());
-                    arg.getVal().setV_byte(p_uint8_t);
-                    break;
-
-                case 's':
-                    arg.getVal().setV_string(args.getString(i));
-                    break;
-            }
-
-            alljoyn.AJ_InitArg(arg, typeId, 0, arg.getVal().getV_data(), 0);
-            status = alljoyn.AJ_MarshalArg(pMsg, arg);
-        }
-
-        return status;
     }
 
     AJ_Status UnmarshalArgs(_AJ_Message msg, StringBuffer sig, JSONArray args, StringBuffer nested) throws JSONException
@@ -1338,5 +1265,364 @@ public class AllJoynCordova extends CordovaPlugin
         }
 
         return status;
+    }
+
+    public AJ_Status AJ_MarshalArgs(_AJ_Message msg, String signature, JSONArray args)
+    {
+        try
+        {
+            AJ_Status status = MarshalArgs(msg, new StringBuffer(signature), args.getJSONArray(0), new StringBuffer());
+            return status;
+        }
+        catch (Exception e)
+        {
+            Log.i(TAG, "AJ_UnmarshalArgs(): AJ_ERR_MARSHAL");
+            return AJ_Status.AJ_ERR_MARSHAL;
+        }
+    }
+
+    public AJ_Status MarshalArgs(_AJ_Message msg, StringBuffer sig, JSONArray args, StringBuffer nested) throws JSONException
+    {
+        AJ_Status status = AJ_Status.AJ_OK;
+
+        while (sig.length() != 0)
+        {
+            _AJ_Arg structArg = new _AJ_Arg();
+            char typeId = sig.charAt(0);
+            nested.append(typeId);
+            sig.deleteCharAt(0);
+            char nextTypeId = (sig.length() == 0) ? '\0' : sig.charAt(0);
+
+            if (!AJ_IsBasicType(typeId))
+            {
+                if ((typeId == AJ_ARG_STRUCT) || (typeId == AJ_ARG_DICT_ENTRY))
+                {
+                    status = alljoyn.AJ_MarshalContainer(msg, structArg, typeId);
+
+                    if (status != AJ_Status.AJ_OK)
+                    {
+                        break;
+                    }
+
+                    status = MarshalArgs(msg, sig, args, nested);
+
+                    if (status == AJ_Status.AJ_OK)
+                    {
+                        int lastNestedTypeId = nested.charAt(nested.length() - 1);
+
+                        if ((lastNestedTypeId == AJ_STRUCT_CLOSE) || (lastNestedTypeId == AJ_DICT_ENTRY_CLOSE))
+                        {
+                            status = alljoyn.AJ_MarshalCloseContainer(msg, structArg);
+
+                            if (status != AJ_Status.AJ_OK)
+                            {
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            status = AJ_Status.AJ_ERR_MARSHAL;
+                            break;
+                        }
+
+                        continue;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                if ((typeId == AJ_ARG_ARRAY) && AJ_IsBasicType(nextTypeId))
+                {
+                    if (!AJ_IsScalarType(nextTypeId)) // "as"
+                    {
+                        _AJ_Arg arrayArg = new _AJ_Arg();
+                        status = alljoyn.AJ_MarshalContainer(msg, arrayArg, AJ_ARG_ARRAY);
+
+                        if (status != AJ_Status.AJ_OK)
+                        {
+                            break;
+                        }
+
+                        JSONArray vArgs = args.getJSONArray(0);
+                        args = JSONArray_Remove(args, 0);
+                        int len = vArgs.length();
+
+                        for (int k = 0; k < len; k++)
+                        {
+                            _AJ_Arg arg = new _AJ_Arg();
+                            arg.getVal().setV_string(vArgs.getString(k));
+                            alljoyn.AJ_InitArg(arg, nextTypeId, 0, arg.getVal().getV_data(), 0);
+                            status = alljoyn.AJ_MarshalArg(msg, arg);
+                        }
+
+                        status = alljoyn.AJ_MarshalCloseContainer(msg, arrayArg);
+                    }
+                    else
+                    {
+                        _AJ_Arg arrayArg = new _AJ_Arg();
+                        status = alljoyn.AJ_MarshalContainer(msg, arrayArg, AJ_ARG_ARRAY);
+
+                        if (status != AJ_Status.AJ_OK)
+                        {
+                            break;
+                        }
+
+                        JSONArray vArgs = args.getJSONArray(0);
+                        args = JSONArray_Remove(args, 0);
+                        int len = vArgs.length();
+                        int sizeOfType = (TYPE_FLAG(nextTypeId) & 0xF);
+
+                        for (int k = 0; k < len; k++)
+                        {
+                            _AJ_Arg arg = new _AJ_Arg();
+                            SWIGTYPE_p_uint32_t p_bool = new SWIGTYPE_p_uint32_t();
+                            SWIGTYPE_p_uint8_t p_uint8_t = new SWIGTYPE_p_uint8_t();
+                            SWIGTYPE_p_uint16_t p_uint16_t = new SWIGTYPE_p_uint16_t();
+                            SWIGTYPE_p_uint32_t p_uint32_t = new SWIGTYPE_p_uint32_t();
+                            SWIGTYPE_p_uint64_t p_uint64_t = new SWIGTYPE_p_uint64_t();
+                            SWIGTYPE_p_int16_t p_int16_t = new SWIGTYPE_p_int16_t();
+                            SWIGTYPE_p_int32_t p_int32_t = new SWIGTYPE_p_int32_t();
+                            SWIGTYPE_p_int64_t p_int64_t = new SWIGTYPE_p_int64_t();
+                            SWIGTYPE_p_double p_double = new SWIGTYPE_p_double();
+
+                            switch (sizeOfType)
+                            {
+                                case 1:
+                                    arg.getVal().setV_byte(alljoyn.setV_byte(vArgs.get(k).toString()));
+                                    break;
+
+                                case 2:
+                                    if (nextTypeId == 'n')
+                                    {
+                                        arg.getVal().setV_int16(alljoyn.setV_int16(vArgs.get(k).toString()));
+                                    }
+                                    else
+                                    {
+                                        arg.getVal().setV_uint16(alljoyn.setV_uint16(vArgs.get(k).toString()));
+                                    }
+
+                                    break;
+
+                                case 4:
+                                    String strVal = vArgs.getString(k);
+
+                                    if (strVal.equals("true") || strVal.equals("TRUE"))
+                                    {
+                                        arg.getVal().setV_uint32(alljoyn.setV_uint32("1"));
+                                    }
+                                    else if (strVal.equals("false") || strVal.equals("FALSE"))
+                                    {
+                                        arg.getVal().setV_uint32(alljoyn.setV_uint32("0"));
+                                    }
+                                    else if (nextTypeId == 'i')
+                                    {
+                                        arg.getVal().setV_int32(alljoyn.setV_int32(vArgs.get(k).toString()));
+                                    }
+                                    else
+                                    {
+                                        arg.getVal().setV_uint32(alljoyn.setV_uint32(vArgs.get(k).toString()));
+                                    }
+
+                                    break;
+
+                                case 8:
+                                    if (nextTypeId == 'd')
+                                    {
+                                        arg.getVal().setV_double(alljoyn.setV_double(vArgs.get(k).toString()));
+                                    }
+                                    else if (nextTypeId == 'x')
+                                    {
+                                        arg.getVal().setV_int64(alljoyn.setV_int64(vArgs.get(k).toString()));
+                                    }
+                                    else
+                                    {
+                                        arg.getVal().setV_uint64(alljoyn.setV_uint64(vArgs.get(k).toString()));
+                                    }
+
+                                    break;
+                            }
+
+                            alljoyn.AJ_InitArg(arg, nextTypeId, 0, arg.getVal().getV_data(), 0);
+                            status = alljoyn.AJ_MarshalArg(msg, arg);
+                        }
+
+                        status = alljoyn.AJ_MarshalCloseContainer(msg, arrayArg);
+                    }
+
+                    sig.deleteCharAt(0);
+                    continue;
+                }
+
+                if ((typeId == AJ_STRUCT_CLOSE) || (typeId == AJ_DICT_ENTRY_CLOSE))
+                {
+                    break;
+                }
+
+                if (typeId == AJ_ARG_VARIANT)
+                {
+                    String _sig = new String(args.getString(0));
+                    args = JSONArray_Remove(args, 0);
+                    status = alljoyn.AJ_MarshalVariant(msg, _sig);
+                    status = MarshalArgs(msg, new StringBuffer(_sig), args, new StringBuffer());
+
+                    if (status != AJ_Status.AJ_OK)
+                    {
+                        break;
+                    }
+
+                    continue;
+                }
+
+                if ((typeId == AJ_ARG_ARRAY) && !AJ_IsBasicType(nextTypeId))
+                {
+                    _AJ_Arg arrayArg = new _AJ_Arg();
+                    String subSig = new String();
+                    char closeContainer = (nextTypeId == '(') ? ')' : '}';
+                    subSig = sig.toString().substring(0, sig.toString().indexOf(closeContainer) + 1);
+                    status = alljoyn.AJ_MarshalContainer(msg, arrayArg, AJ_ARG_ARRAY);
+
+                    if (status != AJ_Status.AJ_OK)
+                    {
+                        break;
+                    }
+
+                    JSONArray vArgs = args.getJSONArray(0);
+
+                    while (vArgs.length() != 0)
+                    {
+                        status = MarshalArgs(msg, new StringBuffer(subSig), vArgs, new StringBuffer());
+
+                        if (status != AJ_Status.AJ_OK)
+                        {
+                            break;
+                        }
+                    }
+
+                    args = JSONArray_Remove(args, 0);
+                    status = alljoyn.AJ_MarshalCloseContainer(msg, arrayArg);
+
+                    if (status != AJ_Status.AJ_OK)
+                    {
+                        break;
+                    }
+
+                    sig.delete(0, subSig.length());
+                    continue;
+                }
+
+                Log.i(TAG, "AJ_MarshalArgs(): AJ_ERR_MARSHAL");
+                status = AJ_Status.AJ_ERR_UNEXPECTED;
+                break;
+            }
+            else
+            {
+                _AJ_Arg arg = new _AJ_Arg();
+
+                if (AJ_IsScalarType(typeId))
+                {
+                    int sizeOfType = (TYPE_FLAG(typeId) & 0xF);
+                    SWIGTYPE_p_uint32_t p_bool = new SWIGTYPE_p_uint32_t();
+                    SWIGTYPE_p_uint8_t p_uint8_t = new SWIGTYPE_p_uint8_t();
+                    SWIGTYPE_p_uint16_t p_uint16_t = new SWIGTYPE_p_uint16_t();
+                    SWIGTYPE_p_uint32_t p_uint32_t = new SWIGTYPE_p_uint32_t();
+                    SWIGTYPE_p_uint64_t p_uint64_t = new SWIGTYPE_p_uint64_t();
+                    SWIGTYPE_p_int16_t p_int16_t = new SWIGTYPE_p_int16_t();
+                    SWIGTYPE_p_int32_t p_int32_t = new SWIGTYPE_p_int32_t();
+                    SWIGTYPE_p_int64_t p_int64_t = new SWIGTYPE_p_int64_t();
+                    SWIGTYPE_p_double p_double = new SWIGTYPE_p_double();
+
+                    switch (sizeOfType)
+                    {
+                        case 1:
+                            arg.getVal().setV_byte(alljoyn.setV_byte( args.get(0).toString()));
+                            args = JSONArray_Remove(args, 0);
+                            break;
+
+                        case 2:
+                            if (typeId == 'n')
+                            {
+                                arg.getVal().setV_int16(alljoyn.setV_int16(args.get(0).toString()));
+                            }
+                            else
+                            {
+                                arg.getVal().setV_uint16(alljoyn.setV_uint16(args.get(0).toString()));
+                            }
+
+                            args = JSONArray_Remove(args, 0);
+                            break;
+
+                        case 4:
+                            String strVal = args.getString(0);
+
+                            if (strVal.equals("true") || strVal.equals("TRUE"))
+                            {
+                                arg.getVal().setV_uint32(alljoyn.setV_uint32("1"));
+                            }
+                            else if (strVal.equals("false") || strVal.equals("FALSE"))
+                            {
+                                arg.getVal().setV_uint32(alljoyn.setV_uint32("0"));
+                            }
+                            else if (typeId == 'i')
+                            {
+                                arg.getVal().setV_int32(alljoyn.setV_int32(args.get(0).toString()));
+                            }
+                            else
+                            {
+                                arg.getVal().setV_uint32(alljoyn.setV_uint32(args.get(0).toString()));
+                            }
+
+                            args = JSONArray_Remove(args, 0);
+                            break;
+
+                        case 8:
+                            if (typeId == 'd')
+                            {
+                                arg.getVal().setV_double(alljoyn.setV_double(args.get(0).toString()));
+                            }
+                            else if (typeId == 'x')
+                            {
+                                arg.getVal().setV_int64(alljoyn.setV_int64(args.get(0).toString()));
+                            }
+                            else
+                            {
+                                arg.getVal().setV_uint64(alljoyn.setV_uint64(args.get(0).toString()));
+                            }
+
+                            args = JSONArray_Remove(args, 0);
+                            break;
+                    }
+
+                    alljoyn.AJ_InitArg(arg, typeId, 0, arg.getVal().getV_data(), 0);
+                }
+                else
+                {
+                    arg.getVal().setV_string(args.getString(0));
+                    args = JSONArray_Remove(args, 0);
+                    alljoyn.AJ_InitArg(arg, typeId, 0, arg.getVal().getV_data(), 0);
+                }
+
+                status = alljoyn.AJ_MarshalArg(msg, arg);
+            }
+        }
+
+        return status;
+    }
+
+    // Helper function used for API level < 19
+    public JSONArray JSONArray_Remove(JSONArray jsonArray, int index) throws JSONException
+    {
+        JSONArray retArray = new JSONArray();
+
+        for (int i = 0; i < jsonArray.length();i++)
+        {
+            if (i != index)
+            {
+                retArray.put(jsonArray.get(i));
+            }
+        }
+
+        return retArray;
     }
 }

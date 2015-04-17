@@ -9,6 +9,11 @@
 #include <stdlib.h>
 
 static char buffer[64];
+static uint8_t u8;
+static uint16_t u16;
+static uint32_t u32;
+static uint64_t u64;
+static double d;
 %}
 
 %apply unsigned short {uint8_t}
@@ -73,49 +78,58 @@ const char* getV_double(double* v_data)
 	return buffer;
 }
 
-void setV_bool(uint32_t* v_data, const char* val)
+uint32_t* setV_bool(const char* val)
 {
-	*v_data = atoi(val);
+	u32 = atoi(val);
+	return &u32;
 }
 
-void setV_byte(uint8_t* v_data, const char* val) 
+uint8_t* setV_byte(const char* val) 
 {
-	*v_data = atoi(val);
+	u8 = atoi(val);
+	return &u8;
 }
 
-void setV_uint16(uint16_t* v_data, const char* val) 
+uint16_t* setV_uint16(const char* val) 
 {
-	*v_data = atoi(val);
+	u16 = atoi(val);
+	return &u16;
 }
 
-void setV_uint32(uint32_t* v_data, const char* val) 
+uint32_t* setV_uint32(const char* val) 
 {
-	*v_data = atoi(val);
+	u32 = atoi(val);
+	return &u32;
 }
 
-void setV_uint64(uint64_t* v_data, const char* val) 
+uint64_t* setV_uint64(const char* val) 
 {
-	*v_data = atol(val);
+	u64 = atol(val);
+	return &u64;
 }
 
-void setV_int16(int16_t* v_data, const char* val) 
+int16_t* setV_int16(const char* val) 
 {
-	*v_data = atoi(val);
+	u16 = atoi(val);
+	return (int16_t*)&u16;
 }
 
-void setV_int32(int32_t* v_data, const char* val) 
+int32_t* setV_int32(const char* val) 
 {
-	*v_data = atoi(val);
+	u32 = atoi(val);
+	return (int32_t*)&u32;
 }
 
-void setV_int64(int64_t* v_data, const char* val) 
+int64_t* setV_int64(const char* val) 
 {
-	*v_data = atol(val);
+	u64 = atol(val);
+	return (int64_t*)&u64;
 }
 
-void setV_double(double* v_data, const char* val) 
+double* setV_double(const char* val) 
 {
-	*v_data = atof(val);
+	d = atof(val);
+	return &d;	
 }
 
 %}
