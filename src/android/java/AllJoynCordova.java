@@ -999,7 +999,7 @@ public class AllJoynCordova extends CordovaPlugin
         return status;
     }
 
-    AJ_Status UnmarshalArgs(_AJ_Message msg, StringBuffer sig, JSONArray args, StringBuffer nested)
+    AJ_Status UnmarshalArgs(_AJ_Message msg, StringBuffer sig, JSONArray args, StringBuffer nested) throws JSONException
     {
         _AJ_Arg structArg = new _AJ_Arg();
         _AJ_Arg arg = new _AJ_Arg();
@@ -1050,6 +1050,112 @@ public class AllJoynCordova extends CordovaPlugin
                     {
                         break;
                     }
+                }
+
+                if ((typeId == AJ_ARG_ARRAY) && AJ_IsBasicType(nextTypeId))
+                {
+                    if (!AJ_IsScalarType(nextTypeId)) // "as"
+                    {
+                        _AJ_Arg arrayArg = new _AJ_Arg();
+                        status = alljoyn.AJ_UnmarshalContainer(msg, arrayArg, AJ_ARG_ARRAY);
+                        JSONArray vArgs = new JSONArray();
+
+                        do
+                        {
+                            JSONArray retObj = AJ_UnmarshalArgs(msg, "s");
+                            status = (AJ_Status)retObj.get(0);
+                            JSONArray retArgs = retObj.getJSONArray(1);
+
+                            if (status != AJ_Status.AJ_OK)
+                            {
+                                break;
+                            }
+
+                            vArgs.put(retArgs.getString(0));
+                        }
+                        while (status == AJ_Status.AJ_OK);
+
+                        args.put(vArgs);
+                        status = alljoyn.AJ_UnmarshalCloseContainer(msg, arrayArg);
+                    }
+                    else
+                    {
+                        _AJ_Arg arrayArg = new _AJ_Arg();
+                        status = alljoyn.AJ_UnmarshalContainer(msg, arrayArg, AJ_ARG_ARRAY);
+                        JSONArray vArgs = new JSONArray();
+
+                        do
+                        {
+                            status = alljoyn.AJ_UnmarshalArg(msg, arg);
+
+                            if (status != AJ_Status.AJ_OK)
+                            {
+                                break;
+                            }
+
+                            int sizeOfType = (TYPE_FLAG(nextTypeId) & 0xF);
+
+                            switch (sizeOfType)
+                            {
+                                case 1:
+                                    vArgs.put(Integer.parseInt(alljoyn.getV_byte(arg.getVal().getV_byte())));
+                                    break;
+
+                                case 2:
+                                    if (nextTypeId == 'n')
+                                    {
+                                        vArgs.put(Integer.parseInt(alljoyn.getV_int16(arg.getVal().getV_int16())));
+                                    }
+                                    else
+                                    {
+                                        vArgs.put(Integer.parseInt(alljoyn.getV_uint16(arg.getVal().getV_uint16())) & 0xFFFF);
+                                    }
+                                    break;
+
+                                case 4:
+                                    if (nextTypeId == 'i')
+                                    {
+                                        vArgs.put(Long.parseLong(alljoyn.getV_int32(arg.getVal().getV_int32())));
+                                    }
+                                    else
+                                    {
+                                        vArgs.put(Long.parseLong(alljoyn.getV_uint32(arg.getVal().getV_uint32())) & 0xFFFFFFFF);
+                                    }
+                                    break;
+
+                                case 8:
+                                    if (nextTypeId == 'd')
+                                    {
+                                        try
+                                        {
+                                            vArgs.put(Double.parseDouble(alljoyn.getV_double(arg.getVal().getV_double())));
+                                        }
+                                        catch (Exception e)
+                                        {
+                                            Log.i(TAG, "AJ_UnmarshalArgs(): AJ_ERR_READ");
+                                            return AJ_Status.AJ_ERR_READ;
+                                        }
+                                    }
+                                    else if (nextTypeId == 'x')
+                                    {
+                                        vArgs.put(Long.parseLong(alljoyn.getV_int64(arg.getVal().getV_int64())));
+                                    }
+                                    else
+                                    {
+                                        // TODO: handle big unsigned values
+                                        vArgs.put(Long.parseLong(alljoyn.getV_uint64(arg.getVal().getV_uint64())));
+                                    }
+                                    break;
+                            }
+                        }
+                        while (status == AJ_Status.AJ_OK);
+
+                        args.put(vArgs);
+                        status = alljoyn.AJ_UnmarshalCloseContainer(msg, arrayArg);
+                    }
+
+                    sig.deleteCharAt(0);
+                    continue;
                 }
 
                 if ((typeId == AJ_STRUCT_CLOSE) || (typeId == AJ_DICT_ENTRY_CLOSE))
@@ -1199,11 +1305,21 @@ public class AllJoynCordova extends CordovaPlugin
 
     JSONArray AJ_UnmarshalArgs(_AJ_Message msg, String signature)
     {
-        JSONArray args = new JSONArray();
-        AJ_Status status = UnmarshalArgs(msg, new StringBuffer(signature), args, new StringBuffer());
         JSONArray retObj = new JSONArray();
-        retObj.put(status);
-        retObj.put(args);
+
+        try
+        {
+            JSONArray args = new JSONArray();
+            AJ_Status status = UnmarshalArgs(msg, new StringBuffer(signature), args, new StringBuffer());
+            retObj.put(status);
+            retObj.put(args);
+        }
+        catch (Exception e)
+        {
+            Log.i(TAG, "AJ_UnmarshalArgs(): AJ_ERR_UNMARSHAL");
+            AJ_Status status = AJ_Status.AJ_ERR_UNMARSHAL;
+            retObj.put(status);
+        }
 
         return retObj;
     }
