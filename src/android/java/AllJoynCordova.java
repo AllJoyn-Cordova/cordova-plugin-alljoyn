@@ -599,12 +599,13 @@ public class AllJoynCordova extends CordovaPlugin
                 {
                     Log.i(TAG, "AJ_SetProxyObjectPath failed with " + alljoyn.AJ_StatusText(status));
                     callbackContext.error("InvokeMember failure: " + alljoyn.AJ_StatusText(status));
+                    return false;
                 }
             }
 
             String destinationChars = "";
 
-            if (destination != null)
+            if (destination != null && !destination.equals("null"))
             {
                 destinationChars = destination;
             }
@@ -617,6 +618,7 @@ public class AllJoynCordova extends CordovaPlugin
                 {
                     Log.i(TAG, "Failure marshalling method call");
                     callbackContext.error("InvokeMember failure: " + alljoyn.AJ_StatusText(status));
+                    return false;
                 }
 
                 if (parameterTypes != null && parameterTypes.length() > 0 && !parameterTypes.equals("null"))
@@ -626,10 +628,44 @@ public class AllJoynCordova extends CordovaPlugin
             }
             else if (memberType == AJ_MemberType.AJ_SIGNAL_MEMBER)
             {
+                int signalFlags = 0;
+                long ttl = 0;
 
+                if (isOwnSession)
+                {
+                    signalFlags = alljoynConstants.AJ_FLAG_GLOBAL_BROADCAST;
+                }
+
+                if ((destination == null || destination.equals("null")) && isOwnSession)
+                {
+                    Log.i(TAG, "SESSIONLESS SIGNAL");
+                    signalFlags |= alljoynConstants.AJ_FLAG_SESSIONLESS;
+                }
+
+                status = alljoyn.AJ_MarshalSignal(bus, msg, msgId, destination, sessionId, signalFlags, ttl);
+
+                if (status != AJ_Status.AJ_OK)
+                {
+                    Log.i(TAG, "AJ_MarshalSignal failed with " + alljoyn.AJ_StatusText(status));
+                    callbackContext.error("InvokeMember failure: " + alljoyn.AJ_StatusText(status));
+                    return false;
+                }
+
+                if (parameterTypes != null && parameterTypes.length() > 0)
+                {
+                    status = MarshalArgs(msg, parameterTypes, parameters);
+
+                    if (status != AJ_Status.AJ_OK)
+                    {
+                        Log.i(TAG, "Failure marshalling arguments: " + alljoyn.AJ_StatusText(status));
+                        callbackContext.error("InvokeMember failure: " + alljoyn.AJ_StatusText(status));
+                        return false;
+                    }
+                }
             }
             else if (memberType == AJ_MemberType.AJ_PROPERTY_MEMBER)
             {
+                // Do nothing
             }
             else
             {
@@ -996,7 +1032,6 @@ public class AllJoynCordova extends CordovaPlugin
                         if ((lastNestedTypeId == AJ_STRUCT_CLOSE) || (lastNestedTypeId == AJ_DICT_ENTRY_CLOSE))
                         {
                             status = alljoyn.AJ_UnmarshalCloseContainer(msg, structArg);
-                            nested.deleteCharAt(nested.length() - 1);
 
                             if (status != AJ_Status.AJ_OK)
                             {
@@ -1042,7 +1077,7 @@ public class AllJoynCordova extends CordovaPlugin
                     _AJ_Arg arrayArg = new _AJ_Arg();
                     String subSig = new String();
                     char closeContainer = (nextTypeId == '(') ? ')' : '}';
-                    subSig = sig.toString();
+                    subSig = sig.toString().substring(0, sig.toString().indexOf(closeContainer) + 1);
                     status = alljoyn.AJ_UnmarshalContainer(msg, arrayArg, AJ_ARG_ARRAY);
                     JSONArray vArgs = new JSONArray();
 
@@ -1051,6 +1086,7 @@ public class AllJoynCordova extends CordovaPlugin
                         StringBuffer inSig = new StringBuffer(subSig);
                         StringBuffer inNested = new StringBuffer();
                         JSONArray inArgs = new JSONArray();
+
                         status = UnmarshalArgs(msg, inSig, inArgs, inNested);
                         int len = inArgs.length();
 
@@ -1107,7 +1143,7 @@ public class AllJoynCordova extends CordovaPlugin
                         case 2:
                             if (typeId == 'n')
                             {
-                                args.put(Integer.parseInt(alljoyn.getV_uint16(arg.getVal().getV_uint16())));
+                                args.put(Integer.parseInt(alljoyn.getV_int16(arg.getVal().getV_int16())));
                             }
                             else
                             {
@@ -1118,7 +1154,7 @@ public class AllJoynCordova extends CordovaPlugin
                         case 4:
                             if (typeId == 'i')
                             {
-                                args.put(Long.parseLong(alljoyn.getV_uint32(arg.getVal().getV_uint32())));
+                                args.put(Long.parseLong(alljoyn.getV_int32(arg.getVal().getV_int32())));
                             }
                             else
                             {
@@ -1141,7 +1177,7 @@ public class AllJoynCordova extends CordovaPlugin
                             }
                             else if (typeId == 'x')
                             {
-                                args.put(Long.parseLong(alljoyn.getV_uint64(arg.getVal().getV_uint64())));
+                                args.put(Long.parseLong(alljoyn.getV_int64(arg.getVal().getV_int64())));
                             }
                             else
                             {
