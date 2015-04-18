@@ -1492,12 +1492,15 @@ public class AllJoynCordova extends CordovaPlugin
 
                     while (vArgs.length() != 0)
                     {
-                        status = MarshalArgs(msg, new StringBuffer(subSig), vArgs, new StringBuffer());
+                        JSONArray inArgs = vArgs.getJSONArray(0);
+                        status = MarshalArgs(msg, new StringBuffer(subSig), inArgs, new StringBuffer());
 
                         if (status != AJ_Status.AJ_OK)
                         {
                             break;
                         }
+
+                        vArgs = JSONArray_Remove(vArgs, 0);
                     }
 
                     args = JSONArray_Remove(args, 0);
