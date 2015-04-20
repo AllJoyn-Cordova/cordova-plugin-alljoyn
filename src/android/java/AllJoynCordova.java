@@ -371,28 +371,12 @@ public class AllJoynCordova extends CordovaPlugin
                 return false;
             }
         }
-        else if (action.equals("addInterfacesListener"))
-        {
-            Log.i(TAG, "AllJoyn.addInterfacesListener");
-            AJ_Status status = AJ_Status.AJ_OK;
-
-            if (status == AJ_Status.AJ_OK)
-            {
-                callbackContext.success("Yay!");
-                return true;
-            }
-            else
-            {
-                callbackContext.error("Error: " + status.toString());
-                return false;
-            }
-        }
         else if (action.equals("addListener"))
         {
             Log.i(TAG, "AllJoyn.addListener");
             AJ_Status status = AJ_Status.AJ_OK;
             JSONArray indexList = data.getJSONArray(0);
-            String responseType = data.getString(1);
+            final String responseType = data.getString(1);
 
             if (indexList == null || responseType == null)
             {
@@ -425,15 +409,51 @@ public class AllJoynCordova extends CordovaPlugin
                     public boolean callback(_AJ_Message pMsg) throws JSONException
                     {
                         m_pMessageHandlers.remove(msgId);
-                        this.callbackContext.success("Yay!");
+
+                        JSONArray retObj =  AJ_UnmarshalArgs(pMsg, responseType);
+                        AJ_Status status = (AJ_Status)retObj.get(0);
+                        JSONArray retArgs = retObj.getJSONArray(1);
+
+                        if (status != AJ_Status.AJ_OK)
+                        {
+                            callbackContext.error("Failure unmarshalling response: " + alljoyn.AJ_StatusText(status));
+                            return true;
+                        }
+
+                        sendSuccessArray(retArgs, this.callbackContext, true, pMsg);
                         return true;
                     }
                 }
             );
 
             m_bStartTimer = true;
+            return true;
+        }
+        else if (action.equals("startAdvertisingName"))
+        {
+            Log.i(TAG, "AllJoyn.startAdvertisingName");
+            String nameToAdvertise = data.getString(0);
+            int portToHostOn = data.getInt(0);
+            Log.i(TAG, "nameToAdvertise=" + nameToAdvertise + " portToHostOn=" + portToHostOn);
+            AJ_Status status = AJ_Status.AJ_OK;
 
-            if( status == AJ_Status.AJ_OK)
+            if (status == AJ_Status.AJ_OK)
+            {
+                callbackContext.success("Yay!");
+                return true;
+            }
+            else
+            {
+                callbackContext.error("Error: " + status.toString());
+                return false;
+            }
+        }
+        else if (action.equals("stopAdvertisingName"))
+        {
+            Log.i(TAG, "AllJoyn.stopAdvertisingName");
+            AJ_Status status = AJ_Status.AJ_OK;
+
+            if (status == AJ_Status.AJ_OK)
             {
                 callbackContext.success("Yay!");
                 return true;
@@ -700,8 +720,9 @@ public class AllJoynCordova extends CordovaPlugin
 
                                 if (outParameterSignature != null && outParameterSignature.length() > 0 && !outParameterSignature.equals("null"))
                                 {
-                                    outValues = AJ_UnmarshalArgs(pMsg, outParameterSignature);
-                                    status = (AJ_Status)outValues.get(0);
+                                    JSONArray retObj =  AJ_UnmarshalArgs(pMsg, outParameterSignature);
+                                    status = (AJ_Status)retObj.get(0);
+                                    outValues = retObj.getJSONArray(1);
                                 }
 
                                 if (status != AJ_Status.AJ_OK)
@@ -989,16 +1010,15 @@ public class AllJoynCordova extends CordovaPlugin
 
                         do
                         {
-                            JSONArray retObj = AJ_UnmarshalArgs(msg, "s");
-                            status = (AJ_Status)retObj.get(0);
-                            JSONArray retArgs = retObj.getJSONArray(1);
+                            _AJ_Arg inArg = new _AJ_Arg();
+                            status = alljoyn.AJ_UnmarshalArg(msg, arg);
 
                             if (status != AJ_Status.AJ_OK)
                             {
                                 break;
                             }
 
-                            vArgs.put(retArgs.getString(0));
+                            vArgs.put(inArg.getVal().getV_string());
                         }
                         while (status == AJ_Status.AJ_OK);
 
@@ -1271,12 +1291,12 @@ public class AllJoynCordova extends CordovaPlugin
     {
         try
         {
-            AJ_Status status = MarshalArgs(msg, new StringBuffer(signature), args.getJSONArray(0), new StringBuffer());
+            AJ_Status status = MarshalArgs(msg, new StringBuffer(signature), args, new StringBuffer());
             return status;
         }
         catch (Exception e)
         {
-            Log.i(TAG, "AJ_UnmarshalArgs(): AJ_ERR_MARSHAL");
+            Log.i(TAG, "AJ_MarshalArgs(): AJ_ERR_MARSHAL");
             return AJ_Status.AJ_ERR_MARSHAL;
         }
     }
