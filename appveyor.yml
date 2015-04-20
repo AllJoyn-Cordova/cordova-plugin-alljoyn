@@ -6,16 +6,9 @@ clone_folder: c:\projects\cordova-plugin-alljoyn
 install:
   - npm install -g grunt-cli
   - npm install
-  - cd ..
-  - npm install cordova
-  - npm install vjrantal/cordova-paramedic
 
 build: off
 
 test_script:
-  - cd c:\projects\cordova-plugin-alljoyn
   - grunt test
-  - cd ..
-  - set PATH=c:\projects\node_modules\.bin;c:\projects\cordova-cli\bin;%PATH%
-  - set PLUGIN_PATH=c:/projects/cordova-plugin-alljoyn
-  - cordova-paramedic --platform windows --plugin %PLUGIN_PATH% --architecture=x86 --buildOnly=true
+  - npm test

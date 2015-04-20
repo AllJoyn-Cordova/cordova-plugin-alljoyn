@@ -459,6 +459,143 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
     }];
 }
 
+-(void)addListenerForReply:(CDVInvokedUrlCommand*)command {
+    [self.commandDelegate runInBackground:^{
+        NSArray* indexList = [command argumentAtIndex:0];
+        NSString* responseType = [command argumentAtIndex:1];
+
+        if(![indexList isKindOfClass:[NSArray class]] ||
+           ![responseType isKindOfClass:[NSString class]]) {
+            [self sendErrorMessage:@"addListenerForReply: Invalid argument." toCallback:[command callbackId] withKeepCallback:false];
+            return;
+        }
+
+        if([indexList count] < 4) {
+            [self sendErrorMessage:@"addListenerForReply: Expected 4 indices in indexList" toCallback:[command callbackId] withKeepCallback:false];
+            return;
+        }
+        NSNumber* listIndex = [indexList objectAtIndex:0];
+        NSNumber* objectIndex = [indexList objectAtIndex:1];
+        NSNumber* interfaceIndex = [indexList objectAtIndex:2];
+        NSNumber* memberIndex = [indexList objectAtIndex:3];
+
+        uint32_t msgId = AJ_ENCODE_MESSAGE_ID(
+                                              [listIndex unsignedIntValue],
+                                              [objectIndex unsignedIntValue],
+                                              [interfaceIndex unsignedIntValue],
+                                              [memberIndex unsignedIntValue]);
+
+        printf("Adding listener for msgId=%u\n", msgId);
+
+        AJ_MemberType memberType = AJ_GetMemberType(msgId, NULL, NULL);
+        if(memberType == AJ_INVALID_MEMBER) {
+            [self sendErrorMessage:@"addListenerForReply: Invalid message id/index list" toCallback:[command callbackId] withKeepCallback:false];
+            return;
+        }
+
+        NSNumber* methodKey = [NSNumber numberWithUnsignedInt:msgId];
+        MsgHandler messageHandler = ^bool(AJ_Message* pMsg) {
+
+            // Save the msg and stop the msg oop
+            [self setCallbackMessagePtr:pMsg];
+            [self setCallbackInProgress:true];
+            NSMutableArray* msgArguments = [NSMutableArray new];
+
+            Marshal_Status marshalStatus = [self unmarshalArgumentsFor:pMsg withSignature:responseType toValues:msgArguments];
+
+            NSMutableArray* callbackArguments = [NSMutableArray new];
+            [callbackArguments insertObject:[self getMsgInfoFrom:pMsg] atIndex:0];
+            [callbackArguments insertObject:msgArguments atIndex:1];
+
+            if(marshalStatus.status == AJ_OK) {
+                NSArray* msgWithResults = [NSArray arrayWithObjects:callbackArguments, [NSNumber numberWithUnsignedLongLong:((unsigned long long)pMsg)], nil];
+                [self sendSuccessMultipart:msgWithResults toCallback:[command callbackId] withKeepCallback:true];
+            } else {
+                [self sendErrorMessage:[NSString stringWithFormat:@"Error %s", AJ_StatusText(marshalStatus.status)] toCallback:[command callbackId] withKeepCallback:true];
+            }
+            return true;
+        };
+
+        [[self MessageHandlers] setObject:messageHandler forKey:methodKey];
+    }];
+}
+
+-(void)sendErrorReply:(CDVInvokedUrlCommand*)command {
+    [self.commandDelegate runInBackground:^{
+        NSNumber* msgId = [command argumentAtIndex:0 withDefault:nil andClass:[NSNumber class]];
+        NSString* errorMessage = [command argumentAtIndex:1 withDefault:@"" andClass:[NSString class]];
+
+        if(msgId == nil || ![msgId isKindOfClass:[NSNumber class]]) {
+            [self sendErrorMessage:@"sendErrorReply: Invalid argument" toCallback:[command callbackId] withKeepCallback:false];
+        } else {
+            // Make sure msgId matches current callback
+            if((void*)[msgId unsignedLongLongValue] == (void*)[self callbackMessagePtr]) {
+                AJ_Message replyMsg;
+                AJ_Status status = AJ_MarshalErrorMsg(&_msg, &replyMsg, [errorMessage UTF8String]);
+                if(status != AJ_OK) {
+                    [self sendErrorStatus:status toCallback:[command callbackId] withKeepCallback:false];
+                } else {
+                    status = AJ_DeliverMsg(&replyMsg);
+                    if(status == AJ_OK) {
+                        [self sendSuccessMessage:@"success" toCallback:[command callbackId] withKeepCallback:false];
+                    } else {
+                        [self sendErrorStatus:status toCallback:[command callbackId] withKeepCallback:false];
+                    }
+                    AJ_CloseMsg(&replyMsg);
+                }
+                AJ_CloseMsg(&_msg);
+                // Unblock msg queue
+                [self setCallbackMessagePtr:NULL];
+                [self setCallbackInProgress:false];
+            } else {
+                [self sendErrorMessage:@"replyMessage: Invalid argument (msgId mismatch)" toCallback:[command callbackId] withKeepCallback:false];
+            }
+        }
+    }];
+}
+
+-(void)sendSuccessReply:(CDVInvokedUrlCommand*)command {
+    [self.commandDelegate runInBackground:^{
+        NSNumber* msgId = [command argumentAtIndex:0 withDefault:nil andClass:[NSNumber class]];
+        NSString* replyArgumentSignature = [command argumentAtIndex:1 withDefault:@"" andClass:[NSString class]];
+        NSArray* replyArguments = [command argumentAtIndex:2 withDefault:[NSArray new] andClass:[NSArray class]];
+
+
+        if(msgId == nil || ![msgId isKindOfClass:[NSNumber class]]) {
+            [self sendErrorMessage:@"sendSuccessReply: Invalid argument" toCallback:[command callbackId] withKeepCallback:false];
+        } else {
+            // Make sure msgId matches current callback
+            if((void*)[msgId unsignedLongLongValue] == (void*)[self callbackMessagePtr]) {
+                AJ_Message replyMsg;
+                AJ_Status status = AJ_MarshalReplyMsg(&_msg, &replyMsg);
+                if(status != AJ_OK) {
+                    [self sendErrorStatus:status toCallback:[command callbackId] withKeepCallback:false];
+                } else {
+                    status = [self marshalArgumentsFor:&replyMsg withSignature:replyArgumentSignature havingValues:replyArguments startingAtIndex:0].status;
+                    if(status != AJ_OK) {
+                        [self sendErrorStatus:status toCallback:[command callbackId] withKeepCallback:false];
+                    } else {
+                        status = AJ_DeliverMsg(&replyMsg);
+                        if(status == AJ_OK) {
+                            [self sendSuccessMessage:@"success" toCallback:[command callbackId] withKeepCallback:false];
+                        } else {
+                            [self sendErrorStatus:status toCallback:[command callbackId] withKeepCallback:false];
+                        }
+                    }
+                    AJ_CloseMsg(&replyMsg);
+                }
+                AJ_CloseMsg(&_msg);
+
+                // Unblock msg queue
+                [self setCallbackMessagePtr:NULL];
+                [self setCallbackInProgress:false];
+            } else {
+                [self sendErrorMessage:@"replyMessage: Invalid argument (msgId mismatch)" toCallback:[command callbackId] withKeepCallback:false];
+            }
+        }
+    }];
+}
+
 -(void)setSignalRule:(CDVInvokedUrlCommand*)command {
     [self.commandDelegate runInBackground:^{
         NSString* ruleString = [command argumentAtIndex:0];
@@ -688,9 +825,14 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
 
                     [[self MessageHandlers] removeObjectForKey:methodKey];
 
-                    if(!pMsg || !(pMsg->hdr) || pMsg->hdr->msgType == AJ_MSG_ERROR) {
+                    if(!pMsg || !(pMsg->hdr)) {
                         // Error
                         [self sendErrorMessage:@"Error" toCallback:[command callbackId] withKeepCallback:false];
+                        return true;
+                    }
+
+                    if(pMsg->hdr->msgType == AJ_MSG_ERROR) {
+                        [self sendErrorMessage:[NSString stringWithFormat:@"%s", pMsg->error] toCallback:[command callbackId] withKeepCallback:false];
                         return true;
                     }
 
@@ -1314,6 +1456,7 @@ dispatch_source_t CreateDispatchTimer(uint64_t interval,
         if(pMsg->iface) {
             [msgInfo setObject:[NSString stringWithUTF8String:pMsg->iface] forKey:@"iface"];
         }
+        [msgInfo setObject:[NSNumber numberWithUnsignedInt:pMsg->sessionId] forKey:@"sessionId"];
     }
     return msgInfo;
 }
@@ -1458,7 +1601,7 @@ AJ_Message _msg;
         // Check for errors we can ignore
         if(status == AJ_ERR_TIMEOUT) {
             // Nothing to do for now, continue i guess
-            AJ_InfoPrintf(("Timeout getting MSG. Will try again...\n"));
+            // AJ_InfoPrintf(("Timeout getting MSG. Will try again...\n"));
             status = AJ_OK;
         } else if (status == AJ_ERR_NO_MATCH) {
             AJ_InfoPrintf(("AJ_ERR_NO_MATCH in main loop. Ignoring!\n"));
@@ -1479,7 +1622,7 @@ AJ_Message _msg;
                 AJ_InfoPrintf((" Done Executing handlers if any ... \n"));
                 switch (_msg.msgId) {
                     default:
-                        printf("Dunno msg %u\n", _msg.msgId);
+                        printf("Unknown msg with id %u\n", _msg.msgId);
                         const char* member = NULL;
                         AJ_GetMemberType(_msg.msgId, &member, NULL);
                         printf("Member: %s\n", member);
@@ -1496,7 +1639,7 @@ AJ_Message _msg;
             }
         }
     }
-    
+
     if(status != AJ_OK) {
         printf("ERROR: Main loop had a non-succesful iteration. Exit status: %d 0x%x %s", status, status, AJ_StatusText(status));
         //        [self sendErrorMessage:[NSString stringWithFormat:@"Error encountered: %d 0x%x %s", status, status, AJ_StatusText(status)]];
