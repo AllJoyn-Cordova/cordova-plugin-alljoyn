@@ -43,6 +43,10 @@ public class AllJoynCordova extends CordovaPlugin
     private static final long AJ_SIGNAL_FOUND_ADV_NAME = (((alljoynConstants.AJ_BUS_ID_FLAG) << 24) | (((1)) << 16) | (((0)) << 8) | (1));   /**< signal for found advertising name */
     private static final long AJ_RED_ID_FLAG = 0x80;
     private static final long AJ_METHOD_JOIN_SESSION = ((long)(((long)alljoynConstants.AJ_BUS_ID_FLAG) << 24) | (((long)(1)) << 16) | (((long)(0)) << 8) | (10));
+    private static final long AJ_METHOD_BIND_SESSION_PORT = AJ_Encode_Message_ID(alljoynConstants.AJ_BUS_ID_FLAG, 1, 0, 8);
+    private static final long AJ_METHOD_UNBIND_SESSION = AJ_Encode_Message_ID(alljoynConstants.AJ_BUS_ID_FLAG, 1, 0, 9);
+    private static final long AJ_METHOD_ADVERTISE_NAME = AJ_Encode_Message_ID(alljoynConstants.AJ_BUS_ID_FLAG, 1, 0, 4);
+    private static final long AJ_METHOD_RELEASE_NAME = AJ_Encode_Message_ID(alljoynConstants.AJ_BUS_ID_FLAG, 0, 0, 8);
 
     private AJ_BusAttachment bus;
     private AJ_Object proxyObjects;
@@ -431,36 +435,196 @@ public class AllJoynCordova extends CordovaPlugin
         }
         else if (action.equals("startAdvertisingName"))
         {
-            Log.i(TAG, "AllJoyn.startAdvertisingName");
-            String nameToAdvertise = data.getString(0);
-            int portToHostOn = data.getInt(0);
-            Log.i(TAG, "nameToAdvertise=" + nameToAdvertise + " portToHostOn=" + portToHostOn);
+            final String nameToAdvertise = data.getString(0);
+            final int portToHostOn = data.getInt(1);
+
+            if (nameToAdvertise == null || nameToAdvertise.equals("null"))
+            {
+                callbackContext.error("startAdvertisingName: Invalid argument(s)");
+                return false;
+            }
+
             AJ_Status status = AJ_Status.AJ_OK;
+            AJ_SessionOpts sessionOptions = new AJ_SessionOpts();
+
+            Log.i(TAG, "Calling AJ_BusBindSessionPort Port=" + portToHostOn);
+            status = alljoyn.AJ_BusBindSessionPort(bus, portToHostOn, sessionOptions, 0);
 
             if (status == AJ_Status.AJ_OK)
             {
-                callbackContext.success("Yay!");
-                return true;
+                long bindSessionPortReplyId = AJ_Reply_ID(AJ_METHOD_BIND_SESSION_PORT);
+                final long bindSessionPortReplyKey = bindSessionPortReplyId;
+
+                m_pMessageHandlers.put
+                (
+                    bindSessionPortReplyKey,
+                    new MsgHandler(callbackContext)
+                    {
+                        public boolean callback(_AJ_Message pMsg) throws JSONException
+                        {
+                            m_pMessageHandlers.remove(bindSessionPortReplyKey);
+                            Log.i(TAG, "Got busRequestName reply");
+                            Log.i(TAG, "Calling AJ_BusAdvertiseName");
+                            AJ_Status status = alljoyn.AJ_BusAdvertiseName(bus, nameToAdvertise, alljoynConstants.AJ_TRANSPORT_ANY, alljoynConstants.AJ_BUS_START_ADVERTISING, 0);
+
+                            if (status == AJ_Status.AJ_OK)
+                            {
+                                long busAdvertiseNameReplyId = AJ_Reply_ID(AJ_METHOD_ADVERTISE_NAME);
+                                final long busAdvertiseNameReplyKey = busAdvertiseNameReplyId;
+
+                                m_pMessageHandlers.put
+                                (
+                                    busAdvertiseNameReplyKey,
+                                    new MsgHandler(callbackContext)
+                                    {
+                                        public boolean callback(_AJ_Message pMsg) throws JSONException
+                                        {
+                                            m_pMessageHandlers.remove(busAdvertiseNameReplyKey);
+                                            Log.i(TAG, "Got busAdvertiseName Reply");
+
+                                            if (pMsg == null || pMsg.getHdr() == null || pMsg.getHdr().getMsgType() == alljoynConstants.AJ_MSG_ERROR)
+                                            {
+                                                callbackContext.error("startAdvertisingName: Failure reply received.");
+                                            }
+                                            else
+                                            {
+                                                Log.i(TAG, "About INIT!");
+                                                AJ_Status status = alljoyn.AJ_AboutInit(bus, portToHostOn);
+
+                                                if (status != AJ_Status.AJ_OK)
+                                                {
+                                                    Log.i(TAG, "Failure initializing about " + alljoyn.AJ_StatusText(status));
+                                                }
+
+                                                callbackContext.success("startAdvertisingName: Success");
+                                            }
+
+                                            return true; // busAdvertiseNameReply
+                                        }
+                                    }
+                                );
+                            }
+                            else
+                            {
+                                callbackContext.error("startAdvertisingName: Failure in AJ_BusAdvertiseName " + alljoyn.AJ_StatusText(status));
+                            }
+
+                            return true; // requestNameReplyHandler
+                        }
+                    }
+                );
             }
             else
             {
-                callbackContext.error("Error: " + status.toString());
+                callbackContext.error("startAdvertisingName: Failure in AJ_BusBindSessionPort " + alljoyn.AJ_StatusText(status));
                 return false;
             }
         }
         else if (action.equals("stopAdvertisingName"))
         {
-            Log.i(TAG, "AllJoyn.stopAdvertisingName");
-            AJ_Status status = AJ_Status.AJ_OK;
+            final String wellKnownName = data.getString(0);
+            final int port = data.getInt(1);
+            AJ_Status status = alljoyn.AJ_BusUnbindSession(bus, port);
 
-            if (status == AJ_Status.AJ_OK)
+            if(status == AJ_Status.AJ_OK)
             {
-                callbackContext.success("Yay!");
+                long unbindSessionReplyId = AJ_Reply_ID(AJ_METHOD_UNBIND_SESSION);
+                final long unbindSessionReplyKey = unbindSessionReplyId;
+
+                m_pMessageHandlers.put
+                (
+                    unbindSessionReplyKey,
+                    new MsgHandler(callbackContext)
+                    {
+                        public boolean callback(_AJ_Message pMsg) throws JSONException
+                        {
+                            m_pMessageHandlers.remove(unbindSessionReplyKey);
+
+                            if (pMsg == null || pMsg.getHdr() == null || pMsg.getHdr().getMsgType() == alljoynConstants.AJ_MSG_ERROR)
+                            {
+                                callbackContext.error("stopAdvertisingName has failed with status: " + AJ_Status.AJ_ERR_FAILURE);
+                            }
+                            else
+                            {
+                                AJ_Status status = alljoyn.AJ_BusReleaseName(bus, wellKnownName);
+
+                                if (status == AJ_Status.AJ_OK)
+                                {
+                                    long releaseNameReplyId = AJ_Reply_ID(AJ_METHOD_RELEASE_NAME);
+                                    final long releaseNameReplyKey = releaseNameReplyId;
+
+                                    m_pMessageHandlers.put
+                                    (
+                                        releaseNameReplyKey,
+                                        new MsgHandler(callbackContext)
+                                        {
+                                            public boolean callback(_AJ_Message pMsg) throws JSONException
+                                            {
+                                                m_pMessageHandlers.remove(releaseNameReplyKey);
+
+                                                if (pMsg == null || pMsg.getHdr() == null || pMsg.getHdr().getMsgType() == alljoynConstants.AJ_MSG_ERROR)
+                                                {
+                                                    callbackContext.error("stopAdvertisingName has failed with status: " + AJ_Status.AJ_ERR_FAILURE);
+                                                }
+                                                else
+                                                {
+                                                    AJ_Status status = alljoyn.AJ_BusAdvertiseName(bus, wellKnownName, alljoynConstants.AJ_TRANSPORT_ANY, alljoynConstants.AJ_BUS_STOP_ADVERTISING, 0);
+
+                                                    if (status == AJ_Status.AJ_OK)
+                                                    {
+                                                        long stopAdvertiseNameReplyId = AJ_Reply_ID(AJ_METHOD_ADVERTISE_NAME);
+                                                        final long stopAdvertiseNameReplyKey = stopAdvertiseNameReplyId;
+
+                                                        m_pMessageHandlers.put
+                                                        (
+                                                            stopAdvertiseNameReplyKey,
+                                                            new MsgHandler(callbackContext)
+                                                            {
+                                                                public boolean callback(_AJ_Message pMsg) throws JSONException
+                                                                {
+                                                                    m_pMessageHandlers.remove(stopAdvertiseNameReplyKey);
+
+                                                                    if (pMsg == null || pMsg.getHdr() == null || pMsg.getHdr().getMsgType() == alljoynConstants.AJ_MSG_ERROR)
+                                                                    {
+                                                                        callbackContext.error("stopAdvertisingName has failed with status: " + AJ_Status.AJ_ERR_FAILURE);
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        callbackContext.success("stopAdvertisingName: Success");
+                                                                    }
+
+                                                                    return true;
+                                                                }
+                                                            }
+                                                        );
+                                                    }
+                                                    else
+                                                    {
+                                                        callbackContext.error("stopAdvertisingName has failed with status: " + alljoyn.AJ_StatusText(status));
+                                                    }
+                                                }
+
+                                                return true;
+                                            }
+                                        }
+                                    );
+
+                                    return true;
+                                }
+
+                                callbackContext.success("startAdvertisingName: Success");
+                            }
+
+                            return true;
+                        }
+                    }
+                );
+
                 return true;
             }
             else
             {
-                callbackContext.error("Error: " + status.toString());
+                callbackContext.error("stopAdvertisingName has failed.");
                 return false;
             }
         }
@@ -551,16 +715,17 @@ public class AllJoynCordova extends CordovaPlugin
         else if (action.equals("leaveSession"))
         {
             Log.i(TAG, "AllJoyn.leaveSession");
-            AJ_Status status = AJ_Status.AJ_OK;
+            long sessionId = data.getLong(0);
+            AJ_Status status = alljoyn.AJ_BusLeaveSession(bus, sessionId);
 
             if (status == AJ_Status.AJ_OK)
             {
-                callbackContext.success("Yay!");
+                callbackContext.success("Left session " + sessionId);
                 return true;
             }
             else
             {
-                callbackContext.error("Error: " + status.toString());
+                callbackContext.error("Failed to leave session " + sessionId + ". Reason = " + alljoyn.AJ_StatusText(status));
                 return false;
             }
         }
@@ -745,7 +910,7 @@ public class AllJoynCordova extends CordovaPlugin
         return false;
     }
 
-    long AJ_Encode_Message_ID(int o, int p, int i, int m)
+    public static long AJ_Encode_Message_ID(int o, int p, int i, int m)
     {
         return ((o << 24) | ((p) << 16) | ((i) << 8) | (m));
     }
