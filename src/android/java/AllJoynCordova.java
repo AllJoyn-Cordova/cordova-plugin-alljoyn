@@ -47,6 +47,7 @@ public class AllJoynCordova extends CordovaPlugin
     private static final long AJ_METHOD_UNBIND_SESSION = AJ_Encode_Message_ID(alljoynConstants.AJ_BUS_ID_FLAG, 1, 0, 9);
     private static final long AJ_METHOD_ADVERTISE_NAME = AJ_Encode_Message_ID(alljoynConstants.AJ_BUS_ID_FLAG, 1, 0, 4);
     private static final long AJ_METHOD_RELEASE_NAME = AJ_Encode_Message_ID(alljoynConstants.AJ_BUS_ID_FLAG, 0, 0, 8);
+    private static final long AJ_METHOD_ACCEPT_SESSION = AJ_Encode_Message_ID(alljoynConstants.AJ_BUS_ID_FLAG, 2, 0, 0);
 
     private AJ_BusAttachment bus;
     private AJ_Object proxyObjects;
@@ -54,6 +55,12 @@ public class AllJoynCordova extends CordovaPlugin
     private Timer m_pTimer = null;
     private boolean m_bStartTimer = false;
     private HashMap m_pMessageHandlers = new HashMap<String, String>();
+    private _AJ_Message m_pMsg = new _AJ_Message();
+
+    // Indicates if there is a callback to the web app in progress
+    // This usually means we need to stop processing messages on the loop until it is done
+    boolean m_isCallbackInProgress = false;
+    _AJ_Message m_pCallbackMessagePtr = null;
 
     /**
      * Sets the context of the Command. This can then be used to do things like
@@ -86,12 +93,11 @@ public class AllJoynCordova extends CordovaPlugin
                             return;
                         }
 
-                        _AJ_Message msg = new _AJ_Message();
-                        AJ_Status status = alljoyn.AJ_UnmarshalMsg(bus, msg, UNMARSHAL_TIMEOUT);
+                        AJ_Status status = alljoyn.AJ_UnmarshalMsg(bus, m_pMsg, UNMARSHAL_TIMEOUT);
 
                         if (status == AJ_Status.AJ_OK)
                         {
-                            final long msgId = msg.getMsgId();
+                            final long msgId = m_pMsg.getMsgId();
 
                             if (m_pMessageHandlers.containsKey(msgId))
                             {
@@ -99,7 +105,7 @@ public class AllJoynCordova extends CordovaPlugin
 
                                 try
                                 {
-                                    handler.callback(msg);
+                                    handler.callback(m_pMsg);
                                 }
                                 catch (Exception e)
                                 {
@@ -112,7 +118,7 @@ public class AllJoynCordova extends CordovaPlugin
                                  * Pass to the built-in bus message handlers
                                  */
                                 Log.i(TAG, "AJ_BusHandleBusMessage() msgId=" + msgId);
-                                status = alljoyn.AJ_BusHandleBusMessage(msg);
+                                status = alljoyn.AJ_BusHandleBusMessage(m_pMsg);
                             }
                         }
                         else if(status == AJ_Status.AJ_ERR_TIMEOUT)
@@ -132,7 +138,7 @@ public class AllJoynCordova extends CordovaPlugin
                             Log.i(TAG, " -- MainLoopError AJ_UnmarshalMsg returned status=" + alljoyn.AJ_StatusText(status));
                         }
 
-                        alljoyn.AJ_CloseMsg(msg);
+                        alljoyn.AJ_CloseMsg(m_pMsg);
                     }
                 },
                 AJ_MESSAGE_SLOW_LOOP_INTERVAL,
@@ -347,6 +353,276 @@ public class AllJoynCordova extends CordovaPlugin
                 callbackContext.error("Failure starting find");
                 return false;
             }
+        }
+        else if (action.equals("replyAcceptSession"))
+        {
+            long msgId = data.getLong(0);
+            long response = data.getLong(1);
+
+            if (msgId == 0)
+            {
+                callbackContext.error("replyAcceptSession: Invalid argument");
+            }
+            else
+            {
+                // Make sure msgId matches current callback
+                if (msgId == alljoyn.getMsgPointer(m_pCallbackMessagePtr))
+                {
+                    // Accept or reject session
+                    AJ_Status status = alljoyn.AJ_BusReplyAcceptSession(m_pMsg, response);
+
+                    if (status != AJ_Status.AJ_OK)
+                    {
+                        callbackContext.error("Error status: " + status);
+                    }
+                    else
+                    {
+                        callbackContext.success("replyAcceptSession: Success");
+                        alljoyn.AJ_CloseMsg(m_pMsg);
+                    }
+
+                    // Unblock msg queue
+                    m_pCallbackMessagePtr = null;
+                    m_isCallbackInProgress = false;
+                }
+                else
+                {
+                    callbackContext.error("Mismatch, or i failed to compare");
+                }
+            }
+
+            return true;
+        }
+        else if (action.equals("setAcceptSessionListener"))
+        {
+            long acceptSessionId = AJ_METHOD_ACCEPT_SESSION;
+            final long acceptSessionKey = acceptSessionId;
+
+            m_pMessageHandlers.put
+            (
+                acceptSessionKey,
+                new MsgHandler(callbackContext)
+                {
+                    public boolean callback(_AJ_Message pMsg) throws JSONException
+                    {
+                        m_pMessageHandlers.remove(acceptSessionKey);
+
+                        // Save the msg and stop the msg oop
+                        m_pCallbackMessagePtr = pMsg;
+                        m_isCallbackInProgress = true;
+
+                        JSONArray retObj = AJ_UnmarshalArgs(pMsg, "qus");
+                        AJ_Status status = (AJ_Status)retObj.get(0);
+                        JSONArray retArgs = retObj.getJSONArray(1);
+
+                        JSONArray callbackArguments = new JSONArray();
+                        callbackArguments.put(retArgs);
+                        callbackArguments.put(alljoyn.getMsgPointer(pMsg));
+
+                        sendSuccessMultipart(callbackArguments, this.callbackContext, true);
+                        return true;
+                    }
+                }
+            );
+
+            return true;
+        }
+        else if (action.equals("addListenerForReply"))
+        {
+            JSONArray indexList = data.getJSONArray(0);
+            final String responseType = data.getString(1);
+
+            if (indexList == null || responseType == null || responseType.equals("null"))
+            {
+                callbackContext.error("addListenerForReply: Invalid argument.");
+                return false;
+            }
+
+            if(indexList.length() < 4)
+            {
+                callbackContext.error("addListenerForReply: Expected 4 indices in indexList");
+                return false;
+            }
+
+            int listIndex = indexList.getInt(0);
+            int objectIndex = indexList.getInt(1);
+            int interfaceIndex = indexList.getInt(2);
+            int memberIndex = indexList.getInt(3);
+            long msgId = AJ_Encode_Message_ID(listIndex, objectIndex, interfaceIndex, memberIndex);
+
+            Log.i(TAG, "Adding listener for msgId=" + msgId);
+
+            AJ_MemberType memberType = alljoyn.AJ_GetMemberType(msgId, null, null);
+
+            if(memberType == AJ_MemberType.AJ_INVALID_MEMBER)
+            {
+                callbackContext.error("addListenerForReply: Invalid message id/index list");
+                return false;
+            }
+
+            final long methodKey = msgId;
+
+            m_pMessageHandlers.put
+            (
+                methodKey,
+                new MsgHandler(callbackContext)
+                {
+                    public boolean callback(_AJ_Message pMsg) throws JSONException
+                    {
+                        m_pMessageHandlers.remove(methodKey);
+
+                        // Save the msg and stop the msg oop
+                        m_pCallbackMessagePtr = pMsg;
+                        m_isCallbackInProgress = true;
+
+                        JSONArray retObj =  AJ_UnmarshalArgs(pMsg, responseType);
+                        AJ_Status status = (AJ_Status)retObj.get(0);
+                        JSONArray retArgs = retObj.getJSONArray(1);
+
+                        JSONArray callbackArguments = new JSONArray();
+                        callbackArguments.put(getMsgInfo(pMsg));
+                        callbackArguments.put(retArgs);
+
+                        if (status == AJ_Status.AJ_OK)
+                        {
+                            JSONArray msgWithResults = new JSONArray();
+                            msgWithResults.put(callbackArguments);
+                            msgWithResults.put(alljoyn.getMsgPointer(pMsg));
+                            msgWithResults.put(null);
+                            sendSuccessMultipart(msgWithResults, this.callbackContext, true);
+                        }
+                        else
+                        {
+                            callbackContext.error("Error " + alljoyn.AJ_StatusText(status));
+                        }
+
+                        return true;
+                    }
+                }
+            );
+        }
+        else if (action.equals("sendErrorReply"))
+        {
+            long msgId = data.getLong(0);
+            String errorMessage = data.getString(1);
+
+            if (msgId == 0)
+            {
+                callbackContext.error("sendErrorReply: Invalid argument");
+            }
+            else
+            {
+                // Make sure msgId matches current callback
+                if (msgId == alljoyn.getMsgPointer(m_pCallbackMessagePtr))
+                {
+                    _AJ_Message replyMsg = new _AJ_Message();
+                    AJ_Status status = alljoyn.AJ_MarshalErrorMsg(m_pMsg, replyMsg, errorMessage);
+
+                    if (status != AJ_Status.AJ_OK)
+                    {
+                        callbackContext.error("Error status: " + status);
+                    }
+                    else
+                    {
+                        status = alljoyn.AJ_DeliverMsg(replyMsg);
+
+                        if (status == AJ_Status.AJ_OK)
+                        {
+                            callbackContext.success("success");
+                        }
+                        else
+                        {
+                            callbackContext.error("Error status: " + status);
+                        }
+
+                        alljoyn.AJ_CloseMsg(replyMsg);
+                    }
+
+                    alljoyn.AJ_CloseMsg(m_pMsg);
+
+                    // Unblock msg queue
+                    m_pCallbackMessagePtr = null;
+                    m_isCallbackInProgress = false;
+                }
+                else
+                {
+                    callbackContext.error("replyMessage: Invalid argument (msgId mismatch)");
+                }
+            }
+
+            return true;
+        }
+        else if (action.equals("sendSuccessReply"))
+        {
+            long msgId = data.getLong(0);
+            String replyArgumentSignature = data.getString(1);
+
+            if (replyArgumentSignature == null || replyArgumentSignature.equals("null"))
+            {
+                replyArgumentSignature = "";
+            }
+
+            JSONArray replyArguments = data.getJSONArray(2);
+
+            if (replyArguments == null)
+            {
+                replyArguments = new JSONArray();
+            }
+
+            if (msgId == 0)
+            {
+                callbackContext.error("sendSuccessReply: Invalid argument");
+            }
+            else
+            {
+                // Make sure msgId matches current callback
+                if (msgId == alljoyn.getMsgPointer(m_pCallbackMessagePtr))
+                {
+                    _AJ_Message replyMsg = new _AJ_Message();
+                    AJ_Status status = alljoyn.AJ_MarshalReplyMsg(m_pMsg, replyMsg);
+
+                    if (status != AJ_Status.AJ_OK)
+                    {
+                        callbackContext.error("Error status: " + status);
+                    }
+                    else
+                    {
+                        status = AJ_MarshalArgs(replyMsg, replyArgumentSignature, replyArguments);
+
+                        if (status == AJ_Status.AJ_OK)
+                        {
+                            status = alljoyn.AJ_DeliverMsg(replyMsg);
+
+                            if (status == AJ_Status.AJ_OK)
+                            {
+                                callbackContext.success("success");
+                            }
+                            else
+                            {
+                                callbackContext.error("Error status: " + status);
+                            }
+                        }
+                        else
+                        {
+                            callbackContext.error("Error status: " + status);
+                        }
+
+                        alljoyn.AJ_CloseMsg(replyMsg);
+                    }
+
+                    alljoyn.AJ_CloseMsg(m_pMsg);
+
+                    // Unblock msg queue
+                    m_pCallbackMessagePtr = null;
+                    m_isCallbackInProgress = false;
+                }
+                else
+                {
+                    callbackContext.error("replyMessage: Invalid argument (msgId mismatch)");
+                }
+            }
+
+            return true;
         }
         else if (action.equals("setSignalRule"))
         {
@@ -960,6 +1236,14 @@ public class AllJoynCordova extends CordovaPlugin
 
         // Send plugin result
         PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, callbackResults);
+        pluginResult.setKeepCallback(keepCallback);
+        callbackContext.sendPluginResult(pluginResult);
+    }
+
+    void sendSuccessMultipart(JSONArray array, CallbackContext callbackContext, boolean keepCallback) throws JSONException
+    {
+        // Send plugin result
+        PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, array);
         pluginResult.setKeepCallback(keepCallback);
         callbackContext.sendPluginResult(pluginResult);
     }

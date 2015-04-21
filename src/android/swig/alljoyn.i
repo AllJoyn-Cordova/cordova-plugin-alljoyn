@@ -132,6 +132,11 @@ double* setV_double(const char* val)
 	return &d;	
 }
 
+long getMsgPointer(AJ_Message* msg) 
+{
+	return &msg;
+}
+
 %}
 
 %include aj_target.i
