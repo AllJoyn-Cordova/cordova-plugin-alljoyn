@@ -157,160 +157,180 @@ public class AllJoynCordova extends CordovaPlugin
      * @return                  True when the action was valid, false otherwise.
      */
     @Override
-    public boolean execute(String action, JSONArray data, CallbackContext callbackContext) throws JSONException
+    public boolean execute(String action, final JSONArray data, final CallbackContext callbackContext) throws JSONException
     {
         if (action.equals("connect"))
         {
-            String serviceName = data.getString(0);
-
-            if (serviceName.length() == 0)
+            new BackgroundTask()
             {
-                serviceName = null;
-            }
+                public void run()
+                {
+                    try
+                    {
+                        String serviceName = data.getString(0);
 
-            long timeout = data.getLong(1);
-            AJ_Status status = null;
-            Log.i(TAG, "AllJoyn.connect("+bus+","+serviceName+","+timeout+")");
+                        if (serviceName.length() == 0)
+                        {
+                            serviceName = null;
+                        }
 
-            try
-            {
-                status = alljoyn.AJ_FindBusAndConnect(bus, serviceName, timeout);
-            }
-            catch (Exception e)
-            {
-                Log.i(TAG, "Exception finding and connecting to bus: " + e.toString());
-            }
+                        long timeout = data.getLong(1);
+                        AJ_Status status = null;
+                        Log.i(TAG, "AllJoyn.connect("+bus+","+serviceName+","+timeout+")");
 
-            Log.i(TAG, "Called AJ_FindBusAndConnect, status = " + status);
+                        status = alljoyn.AJ_FindBusAndConnect(bus, serviceName, timeout);
 
-            if (status == AJ_Status.AJ_OK)
-            {
-                callbackContext.success("Connected to router!");
-                return true;
-            }
-            else
-            {
-                callbackContext.error("Error connecting to router: " + status.toString());
-                return false;
-            }
+                        Log.i(TAG, "Called AJ_FindBusAndConnect, status = " + status);
+
+                        if (status == AJ_Status.AJ_OK)
+                        {
+                            callbackContext.success("Connected to router!");
+                        }
+                        else
+                        {
+                            callbackContext.error("Error connecting to router: " + status.toString());
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        Log.i(TAG, "Exception finding and connecting to bus: " + e.toString());
+                    }
+                }
+            };
+
+            return true;
         }
         else if (action.equals("registerObjects"))
         {
-            AJ_Status status = null;
-            AJ_Object local = null;
-            JSONArray localObjects = null;
-            JSONArray remoteObjects = null;
-            AJ_Object remote = null;
-
-            Log.i(TAG, "AllJoyn.registerObjects()");
-
-            if (data.isNull(0))
+            new BackgroundTask()
             {
-                Log.i(TAG, "AllJoyn.registerObjects: arg 0 null");
-            }
-            else
-            {
-                localObjects = data.getJSONArray(0);
-                local = alljoyn.AJ_ObjectsCreate();
-
-                for (int i = 0; i < localObjects.length() - 1; i++)
+                public void run()
                 {
-                    JSONObject object = localObjects.getJSONObject(i);
-                    AJ_Object nObj = new AJ_Object();
-
-                    // Init path
-                    nObj.setPath(object.getString("path"));
-
-                    // Init interfaces
-                    JSONArray interfacesDesc = object.getJSONArray("interfaces");
-                    SWIGTYPE_p_p_p_char interfaces = alljoyn.AJ_InterfacesCreate();
-                    for (int j = 0; j < interfacesDesc.length(); j++)
+                    try
                     {
-                        if (!interfacesDesc.isNull(j))
-                        {
-                            JSONArray interfaceDesc = interfacesDesc.getJSONArray(j);
-                            SWIGTYPE_p_p_char ifaceMethods = null;
+                        AJ_Status status = null;
+                        AJ_Object local = null;
+                        JSONArray localObjects = null;
+                        JSONArray remoteObjects = null;
+                        AJ_Object remote = null;
 
-                            for (int k = 0; k < interfaceDesc.length(); k++)
+                        Log.i(TAG, "AllJoyn.registerObjects()");
+
+                        if (data.isNull(0))
+                        {
+                            Log.i(TAG, "AllJoyn.registerObjects: arg 0 null");
+                        }
+                        else
+                        {
+                            localObjects = data.getJSONArray(0);
+                            local = alljoyn.AJ_ObjectsCreate();
+
+                            for (int i = 0; i < localObjects.length() - 1; i++)
                             {
-                                if (ifaceMethods == null)
+                                JSONObject object = localObjects.getJSONObject(i);
+                                AJ_Object nObj = new AJ_Object();
+
+                                // Init path
+                                nObj.setPath(object.getString("path"));
+
+                                // Init interfaces
+                                JSONArray interfacesDesc = object.getJSONArray("interfaces");
+                                SWIGTYPE_p_p_p_char interfaces = alljoyn.AJ_InterfacesCreate();
+                                for (int j = 0; j < interfacesDesc.length(); j++)
                                 {
-                                    ifaceMethods = alljoyn.AJ_InterfaceDescriptionCreate(interfaceDesc.getString(k));
-                                }
-                                else
-                                {
-                                    if (interfaceDesc.getString(k).length() > 0)
+                                    if (!interfacesDesc.isNull(j))
                                     {
-                                        ifaceMethods = alljoyn.AJ_InterfaceDescriptionAdd(ifaceMethods, interfaceDesc.getString(k));
+                                        JSONArray interfaceDesc = interfacesDesc.getJSONArray(j);
+                                        SWIGTYPE_p_p_char ifaceMethods = null;
+
+                                        for (int k = 0; k < interfaceDesc.length(); k++)
+                                        {
+                                            if (ifaceMethods == null)
+                                            {
+                                                ifaceMethods = alljoyn.AJ_InterfaceDescriptionCreate(interfaceDesc.getString(k));
+                                            }
+                                            else
+                                            {
+                                                if (interfaceDesc.getString(k).length() > 0)
+                                                {
+                                                    ifaceMethods = alljoyn.AJ_InterfaceDescriptionAdd(ifaceMethods, interfaceDesc.getString(k));
+                                                }
+                                            }
+                                        }
+
+                                        interfaces = alljoyn.AJ_InterfacesAdd(interfaces, ifaceMethods);
                                     }
                                 }
+                                nObj.setInterfaces(interfaces);
+
+                                local = alljoyn.AJ_ObjectsAdd(local, nObj);
                             }
 
-                            interfaces = alljoyn.AJ_InterfacesAdd(interfaces, ifaceMethods);
+                            Log.i(TAG, "AllJoyn.registerObjects() Local: " + localObjects.toString() + " => " + local.toString());
                         }
-                    }
-                    nObj.setInterfaces(interfaces);
 
-                    local = alljoyn.AJ_ObjectsAdd(local, nObj);
-                }
-
-                Log.i(TAG, "AllJoyn.registerObjects() Local: " + localObjects.toString() + " => " + local.toString());
-            }
-
-            if (data.isNull(1))
-            {
-                Log.i(TAG, "AllJoyn.registerObjects: arg 1 null");
-            }
-            else
-            {
-                remoteObjects = data.getJSONArray(1);
-                remote = alljoyn.AJ_ObjectsCreate();
-
-                for (int i = 0; i < remoteObjects.length() - 1; i++)
-                {
-                    JSONObject object = remoteObjects.getJSONObject(i);
-                    AJ_Object nObj = new AJ_Object();
-
-                    // Init path
-                    nObj.setPath(object.getString("path"));
-
-                    // Init interfaces
-                    JSONArray interfacesDesc = object.getJSONArray("interfaces");
-                    SWIGTYPE_p_p_p_char interfaces = alljoyn.AJ_InterfacesCreate();
-                    for (int j = 0; j < interfacesDesc.length(); j++)
-                    {
-                        if (!interfacesDesc.isNull(j))
+                        if (data.isNull(1))
                         {
-                            JSONArray interfaceDesc = interfacesDesc.getJSONArray(j);
-                            SWIGTYPE_p_p_char ifaceMethods = null;
-                            for (int k = 0; k < interfaceDesc.length(); k++)
+                            Log.i(TAG, "AllJoyn.registerObjects: arg 1 null");
+                        }
+                        else
+                        {
+                            remoteObjects = data.getJSONArray(1);
+                            remote = alljoyn.AJ_ObjectsCreate();
+
+                            for (int i = 0; i < remoteObjects.length() - 1; i++)
                             {
-                                if (ifaceMethods == null)
+                                JSONObject object = remoteObjects.getJSONObject(i);
+                                AJ_Object nObj = new AJ_Object();
+
+                                // Init path
+                                nObj.setPath(object.getString("path"));
+
+                                // Init interfaces
+                                JSONArray interfacesDesc = object.getJSONArray("interfaces");
+                                SWIGTYPE_p_p_p_char interfaces = alljoyn.AJ_InterfacesCreate();
+                                for (int j = 0; j < interfacesDesc.length(); j++)
                                 {
-                                    ifaceMethods = alljoyn.AJ_InterfaceDescriptionCreate(interfaceDesc.getString(k));
-                                }
-                                else
-                                {
-                                    if (interfaceDesc.getString(k).length() > 0)
+                                    if (!interfacesDesc.isNull(j))
                                     {
-                                        ifaceMethods = alljoyn.AJ_InterfaceDescriptionAdd(ifaceMethods, interfaceDesc.getString(k));
+                                        JSONArray interfaceDesc = interfacesDesc.getJSONArray(j);
+                                        SWIGTYPE_p_p_char ifaceMethods = null;
+                                        for (int k = 0; k < interfaceDesc.length(); k++)
+                                        {
+                                            if (ifaceMethods == null)
+                                            {
+                                                ifaceMethods = alljoyn.AJ_InterfaceDescriptionCreate(interfaceDesc.getString(k));
+                                            }
+                                            else
+                                            {
+                                                if (interfaceDesc.getString(k).length() > 0)
+                                                {
+                                                    ifaceMethods = alljoyn.AJ_InterfaceDescriptionAdd(ifaceMethods, interfaceDesc.getString(k));
+                                                }
+                                            }
+                                        }
+                                        interfaces = alljoyn.AJ_InterfacesAdd(interfaces, ifaceMethods);
                                     }
                                 }
+                                nObj.setInterfaces(interfaces);
+
+                                remote = alljoyn.AJ_ObjectsAdd(remote, nObj);
                             }
-                            interfaces = alljoyn.AJ_InterfacesAdd(interfaces, ifaceMethods);
+
+                            Log.i(TAG, "AllJoyn.registerObjects() Remote: " + remoteObjects.toString() + " => " + remote.toString());
                         }
+
+                        alljoyn.AJ_RegisterObjects(local, remote);
+                        Log.i(TAG, "AllJoyn.registerObjects succeeded.");
+                        callbackContext.success("Registered objects!");
                     }
-                    nObj.setInterfaces(interfaces);
-
-                    remote = alljoyn.AJ_ObjectsAdd(remote, nObj);
+                    catch (Exception e)
+                    {
+                        Log.i(TAG, "Exception finding and connecting to bus: " + e.toString());
+                    }
                 }
+            };
 
-                Log.i(TAG, "AllJoyn.registerObjects() Remote: " + remoteObjects.toString() + " => " + remote.toString());
-            }
-
-            alljoyn.AJ_RegisterObjects(local, remote);
-            Log.i(TAG, "AllJoyn.registerObjects succeeded.");
-            callbackContext.success("Registered objects!");
             return true;
         }
         else if (action.equals("addAdvertisedNameListener"))
@@ -1007,180 +1027,193 @@ public class AllJoynCordova extends CordovaPlugin
         }
         else if (action.equals("invokeMember"))
         {
-            Log.i(TAG, "AllJoyn.invokeMember");
-            long sessionId = data.getLong(0);
-            String destination = data.getString(1);
-            String signature = data.getString(2);
-            String path = data.getString(3);
-            JSONArray indexList = data.getJSONArray(4);
-            String parameterTypes = data.getString(5);
-            JSONArray parameters = data.getJSONArray(6);
-            final String outParameterSignature = data.getString(7);
-            boolean isOwnSession = false;
-            AJ_Status status = AJ_Status.AJ_OK;
-
-            if (signature == null || indexList == null)
+            new BackgroundTask()
             {
-                callbackContext.error("invokeMember: Invalid Argument");
-                return false;
-            }
-
-            if (indexList.length() < 4)
-            {
-                callbackContext.error("invokeMember: Expected 4 indices in indexList");
-                return false;
-            }
-
-            int listIndex = indexList.getInt(0);
-            int objectIndex = indexList.getInt(1);
-            int interfaceIndex = indexList.getInt(2);
-            int memberIndex = indexList.getInt(3);
-
-            if (sessionId == 0)
-            {
-                Log.i(TAG, "SessionId is 0, overriding listIndex to 1");
-                listIndex = 1;
-                isOwnSession = true;
-            }
-
-            long msgId = AJ_Encode_Message_ID(listIndex, objectIndex, interfaceIndex, memberIndex);
-            Log.i(TAG, "Message id: " + msgId);
-
-            SWIGTYPE_p_p_char memberSignature = new SWIGTYPE_p_p_char();
-            SWIGTYPE_p_uint8_t isSecure = new SWIGTYPE_p_uint8_t();
-
-            AJ_MemberType memberType = alljoyn.AJ_GetMemberType(msgId, memberSignature, isSecure);
-            _AJ_Message msg = new _AJ_Message();
-
-            if (path != null && path.length() > 0 && !path.equals("null")) // Checking null parameter passed from JS layer
-            {
-                status = alljoyn.AJ_SetProxyObjectPath(proxyObjects, msgId, path);
-
-                if(status != AJ_Status.AJ_OK)
+                public void run()
                 {
-                    Log.i(TAG, "AJ_SetProxyObjectPath failed with " + alljoyn.AJ_StatusText(status));
-                    callbackContext.error("InvokeMember failure: " + alljoyn.AJ_StatusText(status));
-                    return false;
-                }
-            }
-
-            String destinationChars = "";
-
-            if (destination != null && !destination.equals("null"))
-            {
-                destinationChars = destination;
-            }
-
-            if (memberType == AJ_MemberType.AJ_METHOD_MEMBER)
-            {
-                status = alljoyn.AJ_MarshalMethodCall(bus, msg, msgId, destinationChars, sessionId, 0, 0);
-
-                if (status != AJ_Status.AJ_OK)
-                {
-                    Log.i(TAG, "Failure marshalling method call");
-                    callbackContext.error("InvokeMember failure: " + alljoyn.AJ_StatusText(status));
-                    return false;
-                }
-
-                if (parameterTypes != null && parameterTypes.length() > 0 && !parameterTypes.equals("null"))
-                {
-                    status = AJ_MarshalArgs(msg, parameterTypes, parameters);
-                }
-            }
-            else if (memberType == AJ_MemberType.AJ_SIGNAL_MEMBER)
-            {
-                int signalFlags = 0;
-                long ttl = 0;
-
-                if (isOwnSession)
-                {
-                    signalFlags = alljoynConstants.AJ_FLAG_GLOBAL_BROADCAST;
-                }
-
-                if ((destination == null || destination.equals("null")) && isOwnSession)
-                {
-                    Log.i(TAG, "SESSIONLESS SIGNAL");
-                    signalFlags |= alljoynConstants.AJ_FLAG_SESSIONLESS;
-                }
-
-                status = alljoyn.AJ_MarshalSignal(bus, msg, msgId, destination, sessionId, signalFlags, ttl);
-
-                if (status != AJ_Status.AJ_OK)
-                {
-                    Log.i(TAG, "AJ_MarshalSignal failed with " + alljoyn.AJ_StatusText(status));
-                    callbackContext.error("InvokeMember failure: " + alljoyn.AJ_StatusText(status));
-                    return false;
-                }
-
-                if (parameterTypes != null && parameterTypes.length() > 0)
-                {
-                    status = AJ_MarshalArgs(msg, parameterTypes, parameters);
-
-                    if (status != AJ_Status.AJ_OK)
+                    try
                     {
-                        Log.i(TAG, "Failure marshalling arguments: " + alljoyn.AJ_StatusText(status));
-                        callbackContext.error("InvokeMember failure: " + alljoyn.AJ_StatusText(status));
-                        return false;
-                    }
-                }
-            }
-            else if (memberType == AJ_MemberType.AJ_PROPERTY_MEMBER)
-            {
-                // Do nothing
-            }
-            else
-            {
-                status = AJ_Status.AJ_ERR_FAILURE;
-            }
+                        Log.i(TAG, "AllJoyn.invokeMember");
+                        long sessionId = data.getLong(0);
+                        String destination = data.getString(1);
+                        String signature = data.getString(2);
+                        String path = data.getString(3);
+                        JSONArray indexList = data.getJSONArray(4);
+                        String parameterTypes = data.getString(5);
+                        JSONArray parameters = data.getJSONArray(6);
+                        final String outParameterSignature = data.getString(7);
+                        boolean isOwnSession = false;
+                        AJ_Status status = AJ_Status.AJ_OK;
 
-            if (AJ_Status.AJ_OK == status)
-            {
-                status = alljoyn.AJ_DeliverMsg(msg);
-
-                if (memberType != AJ_MemberType.AJ_SIGNAL_MEMBER)
-                {
-                    final long replyMsgId = AJ_Reply_ID(msgId);
-
-                    m_pMessageHandlers.put
-                    (
-                        replyMsgId,
-                        new MsgHandler(callbackContext)
+                        if (signature == null || indexList == null)
                         {
-                            public boolean callback(_AJ_Message pMsg) throws JSONException
+                            callbackContext.error("invokeMember: Invalid Argument");
+                            return;
+                        }
+
+                        if (indexList.length() < 4)
+                        {
+                            callbackContext.error("invokeMember: Expected 4 indices in indexList");
+                            return;
+                        }
+
+                        int listIndex = indexList.getInt(0);
+                        int objectIndex = indexList.getInt(1);
+                        int interfaceIndex = indexList.getInt(2);
+                        int memberIndex = indexList.getInt(3);
+
+                        if (sessionId == 0)
+                        {
+                            Log.i(TAG, "SessionId is 0, overriding listIndex to 1");
+                            listIndex = 1;
+                            isOwnSession = true;
+                        }
+
+                        long msgId = AJ_Encode_Message_ID(listIndex, objectIndex, interfaceIndex, memberIndex);
+                        Log.i(TAG, "Message id: " + msgId);
+
+                        SWIGTYPE_p_p_char memberSignature = new SWIGTYPE_p_p_char();
+                        SWIGTYPE_p_uint8_t isSecure = new SWIGTYPE_p_uint8_t();
+
+                        AJ_MemberType memberType = alljoyn.AJ_GetMemberType(msgId, memberSignature, isSecure);
+                        _AJ_Message msg = new _AJ_Message();
+
+                        if (path != null && path.length() > 0 && !path.equals("null")) // Checking null parameter passed from JS layer
+                        {
+                            status = alljoyn.AJ_SetProxyObjectPath(proxyObjects, msgId, path);
+
+                            if(status != AJ_Status.AJ_OK)
                             {
-                                AJ_Status status = AJ_Status.AJ_OK;
-                                JSONArray outValues = null;
-                                m_pMessageHandlers.remove(replyMsgId);
+                                Log.i(TAG, "AJ_SetProxyObjectPath failed with " + alljoyn.AJ_StatusText(status));
+                                callbackContext.error("InvokeMember failure: " + alljoyn.AJ_StatusText(status));
+                                return;
+                            }
+                        }
 
-                                if (pMsg == null || pMsg.getHdr() == null || pMsg.getHdr().getMsgType() == alljoynConstants.AJ_MSG_ERROR)
-                                {
-                                    // Error
-                                    callbackContext.error("Error" + alljoyn.AJ_StatusText(status));
-                                    return true;
-                                }
+                        String destinationChars = "";
 
-                                if (outParameterSignature != null && outParameterSignature.length() > 0 && !outParameterSignature.equals("null"))
-                                {
-                                    JSONArray retObj =  AJ_UnmarshalArgs(pMsg, outParameterSignature);
-                                    status = (AJ_Status)retObj.get(0);
-                                    outValues = retObj.getJSONArray(1);
-                                }
+                        if (destination != null && !destination.equals("null"))
+                        {
+                            destinationChars = destination;
+                        }
+
+                        if (memberType == AJ_MemberType.AJ_METHOD_MEMBER)
+                        {
+                            status = alljoyn.AJ_MarshalMethodCall(bus, msg, msgId, destinationChars, sessionId, 0, 0);
+
+                            if (status != AJ_Status.AJ_OK)
+                            {
+                                Log.i(TAG, "Failure marshalling method call");
+                                callbackContext.error("InvokeMember failure: " + alljoyn.AJ_StatusText(status));
+                                return;
+                            }
+
+                            if (parameterTypes != null && parameterTypes.length() > 0 && !parameterTypes.equals("null"))
+                            {
+                                status = AJ_MarshalArgs(msg, parameterTypes, parameters);
+                            }
+                        }
+                        else if (memberType == AJ_MemberType.AJ_SIGNAL_MEMBER)
+                        {
+                            int signalFlags = 0;
+                            long ttl = 0;
+
+                            if (isOwnSession)
+                            {
+                                signalFlags = alljoynConstants.AJ_FLAG_GLOBAL_BROADCAST;
+                            }
+
+                            if ((destination == null || destination.equals("null")) && isOwnSession)
+                            {
+                                Log.i(TAG, "SESSIONLESS SIGNAL");
+                                signalFlags |= alljoynConstants.AJ_FLAG_SESSIONLESS;
+                            }
+
+                            status = alljoyn.AJ_MarshalSignal(bus, msg, msgId, destination, sessionId, signalFlags, ttl);
+
+                            if (status != AJ_Status.AJ_OK)
+                            {
+                                Log.i(TAG, "AJ_MarshalSignal failed with " + alljoyn.AJ_StatusText(status));
+                                callbackContext.error("InvokeMember failure: " + alljoyn.AJ_StatusText(status));
+                                return;
+                            }
+
+                            if (parameterTypes != null && parameterTypes.length() > 0)
+                            {
+                                status = AJ_MarshalArgs(msg, parameterTypes, parameters);
 
                                 if (status != AJ_Status.AJ_OK)
                                 {
-                                    callbackContext.error("Failure unmarshalling response: " + alljoyn.AJ_StatusText(status));
-                                    return true;
+                                    Log.i(TAG, "Failure marshalling arguments: " + alljoyn.AJ_StatusText(status));
+                                    callbackContext.error("InvokeMember failure: " + alljoyn.AJ_StatusText(status));
+                                    return;
                                 }
-
-                                sendSuccessArray(outValues, this.callbackContext, false, pMsg);
-                                return true;
                             }
                         }
-                    );
-                }
+                        else if (memberType == AJ_MemberType.AJ_PROPERTY_MEMBER)
+                        {
+                            // Do nothing
+                        }
+                        else
+                        {
+                            status = AJ_Status.AJ_ERR_FAILURE;
+                        }
 
-                return (AJ_Status.AJ_OK == status);
-            }
+                        if (AJ_Status.AJ_OK == status)
+                        {
+                            status = alljoyn.AJ_DeliverMsg(msg);
+
+                            if (memberType != AJ_MemberType.AJ_SIGNAL_MEMBER)
+                            {
+                                final long replyMsgId = AJ_Reply_ID(msgId);
+
+                                m_pMessageHandlers.put
+                                (
+                                    replyMsgId,
+                                    new MsgHandler(callbackContext)
+                                    {
+                                        public boolean callback(_AJ_Message pMsg) throws JSONException
+                                        {
+                                            AJ_Status status = AJ_Status.AJ_OK;
+                                            JSONArray outValues = null;
+                                            m_pMessageHandlers.remove(replyMsgId);
+
+                                            if (pMsg == null || pMsg.getHdr() == null || pMsg.getHdr().getMsgType() == alljoynConstants.AJ_MSG_ERROR)
+                                            {
+                                                // Error
+                                                callbackContext.error("Error" + alljoyn.AJ_StatusText(status));
+                                                return true;
+                                            }
+
+                                            if (outParameterSignature != null && outParameterSignature.length() > 0 && !outParameterSignature.equals("null"))
+                                            {
+                                                JSONArray retObj =  AJ_UnmarshalArgs(pMsg, outParameterSignature);
+                                                status = (AJ_Status)retObj.get(0);
+                                                outValues = retObj.getJSONArray(1);
+                                            }
+
+                                            if (status != AJ_Status.AJ_OK)
+                                            {
+                                                callbackContext.error("Failure unmarshalling response: " + alljoyn.AJ_StatusText(status));
+                                                return true;
+                                            }
+
+                                            sendSuccessArray(outValues, this.callbackContext, false, pMsg);
+                                            return true;
+                                        }
+                                    }
+                                );
+                            }
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        Log.i(TAG, "Exception finding and connecting to bus: " + e.toString());
+                    }
+                }
+            };
+
+            return true;
         }
 
         return false;
@@ -1275,6 +1308,16 @@ public class AllJoynCordova extends CordovaPlugin
         }
 
         public abstract boolean callback(_AJ_Message pMsg) throws JSONException;
+    }
+
+    public abstract class BackgroundTask implements Runnable
+    {
+        public BackgroundTask()
+        {
+            new Thread(this).start();
+        }
+
+        public abstract void run();
     }
 
     // --------------------------------------------------------------------------
