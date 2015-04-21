@@ -91,10 +91,12 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
             if(status == AJ_OK) {
                 [self setConnectedToBus:true];
                 [self sendSuccessMessage:@"Connected" toCallback:[command callbackId] withKeepCallback:false];
+                 printf("\n\nStarted!\n");
             } else {
                 [self sendErrorMessage:@"Failed to connect" toCallback:[command callbackId] withKeepCallback:false];
+                dispatch_suspend([self dispatchSource]);
+                printf("\n\nNot Started.\n");
             }
-            printf("\n\nStarted!\n");
         }
     }];
 }
