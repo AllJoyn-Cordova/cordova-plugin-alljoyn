@@ -240,7 +240,11 @@ var AllJoyn = {
             success(bus);
         };
         if (connectedBus === null) {
-            exec(successCallback, error, 'AllJoyn', 'connect', ['', 5000]);
+            var connectError = function (errorArg) {
+                connectedBus = null;
+                error(errorArg);
+            };
+            exec(successCallback, connectError, 'AllJoyn', 'connect', ['', 5000]);
         } else {
             success(connectedBus);
         }

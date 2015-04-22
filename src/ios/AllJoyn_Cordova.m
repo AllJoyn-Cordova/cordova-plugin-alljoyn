@@ -35,6 +35,8 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
 @property dispatch_source_t dispatchSource;
 // Indicates if the app is connected to the bus or not
 @property Boolean connectedToBus;
+// Used to communicate back to the plugin if we get disconnected
+@property NSString* connectCallbackId;
 
 // Indicates if there is a callback to the web app in progress
 // This usually means we need to stop processing messages on the loop until it is done
@@ -90,8 +92,9 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
             status = [self internalConnectBus:[self busAttachment]];
             if(status == AJ_OK) {
                 [self setConnectedToBus:true];
-                [self sendSuccessMessage:@"Connected" toCallback:[command callbackId] withKeepCallback:false];
+                [self sendSuccessMessage:@"Connected" toCallback:[command callbackId] withKeepCallback:true];
                  printf("\n\nStarted!\n");
+                [self setConnectCallbackId:[command callbackId]];
             } else {
                 [self sendErrorMessage:@"Failed to connect" toCallback:[command callbackId] withKeepCallback:false];
                 dispatch_suspend([self dispatchSource]);
@@ -1431,13 +1434,17 @@ dispatch_source_t CreateDispatchTimer(uint64_t interval,
 }
 
 - (void) disconnect:(CDVInvokedUrlCommand*) command {
+    [self internalDisconnect];
+    [self sendSuccessMessage:@"Disconnected" toCallback:[command callbackId] withKeepCallback:false];
+}
+
+- (void)internalDisconnect {
     AJ_Disconnect([self busAttachment]);
     [self setConnectedToBus:false];
     memset([self busAttachment], 0, sizeof(AJ_BusAttachment));
 
     // Stop background tasks
     dispatch_suspend([self dispatchSource]);
-    [self sendSuccessMessage:@"Disconnected" toCallback:[command callbackId] withKeepCallback:false];
 }
 
 -(void) sendSuccessMultipart:(NSArray*)array toCallback:(NSString*)callbackId withKeepCallback:(Boolean) keepCallback {
@@ -1645,7 +1652,13 @@ AJ_Message _msg;
 
     if(status != AJ_OK) {
         printf("ERROR: Main loop had a non-succesful iteration. Exit status: %d 0x%x %s", status, status, AJ_StatusText(status));
-        //        [self sendErrorMessage:[NSString stringWithFormat:@"Error encountered: %d 0x%x %s", status, status, AJ_StatusText(status)]];
+
+        if(status == AJ_ERR_READ || status == AJ_ERR_WRITE) {
+            printf("Network error. Disconnecting.");
+            [self internalDisconnect];
+            [self sendErrorStatus:status toCallback:[self connectCallbackId] withKeepCallback:false];
+        }
+        
         return;
     }
 }
