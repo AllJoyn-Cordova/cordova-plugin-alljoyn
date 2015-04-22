@@ -985,6 +985,7 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
                     }
                 }
                 break;
+            case AJ_ARG_SIGNATURE:
             case AJ_ARG_OBJ_PATH:
             case AJ_ARG_STRING: {
                 marshalStatus.status = AJ_UnmarshalArg(pMsg, &arg);
@@ -1246,6 +1247,8 @@ ErrorExit:
                 arg.val.v_byte = &u8;
                 break;
             case AJ_ARG_STRING:
+            case AJ_ARG_OBJ_PATH:
+            case AJ_ARG_SIGNATURE:
                 arg.val.v_string = [[values objectAtIndexedSubscript:marshalStatus.nextArgumentIndex++] UTF8String];
                 break;
             case AJ_ARG_ARRAY:
@@ -1330,8 +1333,6 @@ ErrorExit:
             case AJ_ARG_INVALID:
                 marshalStatus.status = AJ_ERR_INVALID;
                 break;
-            case AJ_ARG_OBJ_PATH:
-            case AJ_ARG_SIGNATURE:
             case AJ_ARG_STRUCT:
                 arg.typeId = AJ_ARG_STRUCT;
                 marshalStatus.status = AJ_MarshalContainer(pMsg, &arg, AJ_ARG_STRUCT);
