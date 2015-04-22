@@ -7,7 +7,8 @@
         "url": "https://github.com/AllJoyn-Cordova/cordova-plugin-alljoyn.git"
     },
     "scripts": {
-        "test": "node tests/run.js"
+        "test": "node tests/run.js",
+        "build-only": "node tests/run.js build-only"
     },
     "devDependencies": {
         "cordova": "^4.3.0",

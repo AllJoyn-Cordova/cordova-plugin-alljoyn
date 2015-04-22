@@ -82,14 +82,16 @@ $ cordova run android
 Running Tests
 -------------
 
-The iOS tests can be run locally with:
+The tests can be run locally with:
 
 ```
 $ npm install
 $ npm test
 ```
 
-With above commands, the tests are run on real device if Cordova scripts find one or in simulator if device not found
+An AllJoyn router must be accessible in the network in which the target device runs for the tests to pass.
+
+The target platform will be selected automatically based on which platform the tests are run. On Mac, an iOS build is made. On Windows, the Cordova universal Windows platform is used and on Linux, the build will be targeting Android. To switch the target, one needs to edit the variable  cordovaPlatformMapping at the top of file tests/run.js.
 
 To run tests on Windows, first ensure that fresh enough Cordova script is found from the path. You can look at appveyor.yml file from the root of this repository how this is done in the CI environment. You can use where command to check which cordova is found first from your path:
 
@@ -97,16 +99,8 @@ To run tests on Windows, first ensure that fresh enough Cordova script is found 
 $ where cordova
 ```
 
-Then, in the root of the repository:
+If you only want to verify that the build is working via Cordova scripts, you can run:
 
 ```
-$ npm install
-$ set PATH=%cd%\node_modules\.bin;%PATH%
-$ cordova-paramedic --platform windows --plugin %cd% --tempProjectPath %tmp%\testApp --architecture=x86 --phone=true
-```
-
-Above runs the tests on a Windows Phone emulator. To run on real device, make sure it is connected and run:
-
-```
-$ cordova-paramedic --platform windows --plugin %cd% --tempProjectPath %tmp%\testApp --architecture=arm --phone=true --device=true
+$ npm run build-only
 ```
