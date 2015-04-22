@@ -8,8 +8,11 @@ var cordovaPlatformMapping = {
 };
 var cordovaPlatform = cordovaPlatformMapping[platform];
 
-// Load alljoyn only on Mac and Linux since it doesn't build on Windows
-var alljoyn = (platform === 'darwin' || platform === 'linux') && require('alljoyn') || null;
+var buildOnly = process.argv[2] === 'build-only';
+var requestRouter = process.argv[2] === 'request-router';
+
+// Require alljoyn only if a router is requested
+var alljoyn = requestRouter && require('alljoyn') || null;
 var path = require('path');
 var os = require('os');
 var spawn = require('child_process').spawn;
@@ -38,7 +41,7 @@ var runRouter = function () {
     bus.connect();
 };
 
-if (platform === 'darwin' || platform === 'linux') {
+if (requestRouter) {
     runRouter();
 }
 
@@ -56,7 +59,7 @@ var parameticArguments = [
     '--removeTempProject=true'
 ];
 
-if (platform === 'win32' || platform === 'linux') {
+if (buildOnly) {
     parameticArguments.push('--buildOnly=true');
 }
 

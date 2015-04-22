@@ -4,11 +4,9 @@
 clone_folder: c:\projects\cordova-plugin-alljoyn
 
 install:
-  - npm install -g grunt-cli
   - npm install
 
 build: off
 
 test_script:
-  - grunt test
-  - npm test
+  - npm run build-only

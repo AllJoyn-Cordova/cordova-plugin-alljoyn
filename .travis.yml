@@ -4,4 +4,4 @@ install:
   - npm install
 script:
   - grunt test
-  - npm test
+  - npm run build-only

@@ -12,3 +12,5 @@ test:
         background: true
         parallel: true
     - circle-android wait-for-boot
+  override:
+    - npm run build-only
