@@ -98,6 +98,7 @@ public class AllJoynCordova extends CordovaPlugin
                         if (status == AJ_Status.AJ_OK)
                         {
                             final long msgId = m_pMsg.getMsgId();
+                            Log.i(TAG, "Received msgId: " + msgId);
 
                             if (m_pMessageHandlers.containsKey(msgId))
                             {
@@ -120,6 +121,11 @@ public class AllJoynCordova extends CordovaPlugin
                                 Log.i(TAG, "AJ_BusHandleBusMessage() msgId=" + msgId);
                                 status = alljoyn.AJ_BusHandleBusMessage(m_pMsg);
                             }
+
+                            if (!m_isCallbackInProgress)
+                            {
+                                alljoyn.AJ_CloseMsg(m_pMsg);
+                            }
                         }
                         else if(status == AJ_Status.AJ_ERR_TIMEOUT)
                         {
@@ -137,8 +143,6 @@ public class AllJoynCordova extends CordovaPlugin
                         {
                             Log.i(TAG, " -- MainLoopError AJ_UnmarshalMsg returned status=" + alljoyn.AJ_StatusText(status));
                         }
-
-                        alljoyn.AJ_CloseMsg(m_pMsg);
                     }
                 },
                 AJ_MESSAGE_SLOW_LOOP_INTERVAL,
@@ -351,7 +355,6 @@ public class AllJoynCordova extends CordovaPlugin
                     {
                         public boolean callback(_AJ_Message pMsg) throws JSONException
                         {
-                            m_pMessageHandlers.remove(msgId);
                             _AJ_Arg arg = new _AJ_Arg();
                             alljoyn.AJ_UnmarshalArg(pMsg, arg);
                             Log.i(TAG, "FoundAdvertisedName(" + arg.getVal().getV_string() + ")");
@@ -425,8 +428,6 @@ public class AllJoynCordova extends CordovaPlugin
                 {
                     public boolean callback(_AJ_Message pMsg) throws JSONException
                     {
-                        m_pMessageHandlers.remove(acceptSessionKey);
-
                         // Save the msg and stop the msg oop
                         m_pCallbackMessagePtr = pMsg;
                         m_isCallbackInProgress = true;
@@ -489,8 +490,6 @@ public class AllJoynCordova extends CordovaPlugin
                 {
                     public boolean callback(_AJ_Message pMsg) throws JSONException
                     {
-                        m_pMessageHandlers.remove(methodKey);
-
                         // Save the msg and stop the msg oop
                         m_pCallbackMessagePtr = pMsg;
                         m_isCallbackInProgress = true;
@@ -708,8 +707,6 @@ public class AllJoynCordova extends CordovaPlugin
                 {
                     public boolean callback(_AJ_Message pMsg) throws JSONException
                     {
-                        m_pMessageHandlers.remove(msgId);
-
                         JSONArray retObj =  AJ_UnmarshalArgs(pMsg, responseType);
                         AJ_Status status = (AJ_Status)retObj.get(0);
                         JSONArray retArgs = retObj.getJSONArray(1);
@@ -1041,7 +1038,7 @@ public class AllJoynCordova extends CordovaPlugin
                         JSONArray indexList = data.getJSONArray(4);
                         String parameterTypes = data.getString(5);
                         JSONArray parameters = data.getJSONArray(6);
-                        final String outParameterSignature = data.getString(7);
+                        final String outParameterSignature = (data.length() == 7) ? null : data.getString(7);
                         boolean isOwnSession = false;
                         AJ_Status status = AJ_Status.AJ_OK;
 
@@ -1118,18 +1115,13 @@ public class AllJoynCordova extends CordovaPlugin
                             int signalFlags = 0;
                             long ttl = 0;
 
-                            if (isOwnSession)
+                            if (sessionId == 0 && destinationChars == "")
                             {
-                                signalFlags = alljoynConstants.AJ_FLAG_GLOBAL_BROADCAST;
+                                Log.i(TAG, "Sessionless signal");
+                                signalFlags = alljoynConstants.AJ_FLAG_SESSIONLESS;
                             }
 
-                            if ((destination == null || destination.equals("null")) && isOwnSession)
-                            {
-                                Log.i(TAG, "SESSIONLESS SIGNAL");
-                                signalFlags |= alljoynConstants.AJ_FLAG_SESSIONLESS;
-                            }
-
-                            status = alljoyn.AJ_MarshalSignal(bus, msg, msgId, destination, sessionId, signalFlags, ttl);
+                            status = alljoyn.AJ_MarshalSignal(bus, msg, msgId, destinationChars, sessionId, signalFlags, ttl);
 
                             if (status != AJ_Status.AJ_OK)
                             {
@@ -1208,7 +1200,7 @@ public class AllJoynCordova extends CordovaPlugin
                     }
                     catch (Exception e)
                     {
-                        Log.i(TAG, "Exception finding and connecting to bus: " + e.toString());
+                        Log.i(TAG, "Exception: " + e.toString());
                     }
                 }
             };
