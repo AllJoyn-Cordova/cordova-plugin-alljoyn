@@ -62,6 +62,9 @@ public class AllJoynCordova extends CordovaPlugin
     boolean m_isCallbackInProgress = false;
     _AJ_Message m_pCallbackMessagePtr = null;
 
+    // Indicates if the app is connected to the bus or not
+    boolean m_isConnectedToBus;
+
     /**
      * Sets the context of the Command. This can then be used to do things like
      * get file paths associated with the Activity.
@@ -88,7 +91,7 @@ public class AllJoynCordova extends CordovaPlugin
                     @Override
                     public void run()
                     {
-                        if (!m_bStartTimer)
+                        if (!m_bStartTimer || !m_isConnectedToBus || m_isCallbackInProgress)
                         {
                             return;
                         }
@@ -149,6 +152,9 @@ public class AllJoynCordova extends CordovaPlugin
                 AJ_MESSAGE_SLOW_LOOP_INTERVAL
         );
 
+        m_isConnectedToBus = false;
+        m_bStartTimer = false;
+
         Log.i(TAG, "Initialization completed.");
     }
 
@@ -165,43 +171,65 @@ public class AllJoynCordova extends CordovaPlugin
     {
         if (action.equals("connect"))
         {
-            new BackgroundTask()
+            if (!m_isConnectedToBus)
             {
-                public void run()
+                new BackgroundTask()
                 {
-                    try
+                    public void run()
                     {
-                        String serviceName = data.getString(0);
-
-                        if (serviceName.length() == 0)
+                        try
                         {
-                            serviceName = null;
+                            if (bus == null)
+                            {
+                                bus = new AJ_BusAttachment();
+                            }
+
+                            String serviceName = data.getString(0);
+
+                            if (serviceName.length() == 0)
+                            {
+                                serviceName = null;
+                            }
+
+                            long timeout = data.getLong(1);
+                            AJ_Status status = null;
+                            Log.i(TAG, "AllJoyn.connect("+bus+","+serviceName+","+timeout+")");
+
+                            status = alljoyn.AJ_FindBusAndConnect(bus, serviceName, timeout);
+
+                            Log.i(TAG, "Called AJ_FindBusAndConnect, status = " + status);
+
+                            if (status == AJ_Status.AJ_OK)
+                            {
+                                m_isConnectedToBus = true;
+                                callbackContext.success("Connected to router!");
+                            }
+                            else
+                            {
+                                callbackContext.error("Error connecting to router: " + status.toString());
+                            }
                         }
-
-                        long timeout = data.getLong(1);
-                        AJ_Status status = null;
-                        Log.i(TAG, "AllJoyn.connect("+bus+","+serviceName+","+timeout+")");
-
-                        status = alljoyn.AJ_FindBusAndConnect(bus, serviceName, timeout);
-
-                        Log.i(TAG, "Called AJ_FindBusAndConnect, status = " + status);
-
-                        if (status == AJ_Status.AJ_OK)
+                        catch (Exception e)
                         {
-                            callbackContext.success("Connected to router!");
-                        }
-                        else
-                        {
-                            callbackContext.error("Error connecting to router: " + status.toString());
+                            Log.i(TAG, "Exception finding and connecting to bus: " + e.toString());
                         }
                     }
-                    catch (Exception e)
-                    {
-                        Log.i(TAG, "Exception finding and connecting to bus: " + e.toString());
-                    }
-                }
-            };
+                };
+            }
 
+            return true;
+        }
+        if (action.equals("disconnect"))
+        {
+            // Disconnect bus
+            alljoyn.AJ_Disconnect(bus);
+            m_isConnectedToBus = false;
+            bus = null;
+            System.gc();
+
+            // Stop background tasks
+            m_bStartTimer = false;
+            callbackContext.success("Disconnected");
             return true;
         }
         else if (action.equals("registerObjects"))
