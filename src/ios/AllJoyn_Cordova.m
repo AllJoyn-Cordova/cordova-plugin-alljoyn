@@ -8,7 +8,6 @@
 #include "aj_disco.h"
 #include "aj_config.h"
 
-
 // Used to enable handling the msg responce for a method invocation
 // returns true if the handler handled the message. False if not
 // in which case other handlers will have a chance at it
@@ -36,7 +35,7 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
 // Indicates if the app is connected to the bus or not
 @property Boolean connectedToBus;
 // Used to communicate back to the plugin if we get disconnected
-@property NSString* connectCallbackId;
+@property NSString* connectionErrorCallbackId;
 
 // Indicates if there is a callback to the web app in progress
 // This usually means we need to stop processing messages on the loop until it is done
@@ -92,9 +91,8 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
             status = [self internalConnectBus:[self busAttachment]];
             if(status == AJ_OK) {
                 [self setConnectedToBus:true];
-                [self sendSuccessMessage:@"Connected" toCallback:[command callbackId] withKeepCallback:true];
+                [self sendSuccessMessage:@"Connected" toCallback:[command callbackId] withKeepCallback:false];
                  printf("\n\nStarted!\n");
-                [self setConnectCallbackId:[command callbackId]];
             } else {
                 [self sendErrorMessage:@"Failed to connect" toCallback:[command callbackId] withKeepCallback:false];
                 dispatch_suspend([self dispatchSource]);
@@ -102,6 +100,31 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
             }
         }
     }];
+}
+
+-(void)addConnectionErrorListener:(CDVInvokedUrlCommand*)command {
+    if(![self verifyConnectedToBus:command]) {
+        return;
+    }
+
+    if([self connectionErrorCallbackId] != nil) {
+        // Detach the old listener if one exists
+        [self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_NO_RESULT] callbackId:[self connectionErrorCallbackId]];
+    }
+
+    [self setConnectionErrorCallbackId:[command callbackId]];
+}
+
+// Method returns true if connected to the bus
+// Method sends an error message to the callback and returns false otherwise
+-(Boolean) verifyConnectedToBus:(CDVInvokedUrlCommand*)command {
+    if(![self connectedToBus]) {
+        AJ_InfoPrintf(("Error: Not connected to bus."));
+        [self sendErrorStatus:AJ_ERR_CONNECT toCallback:[command callbackId] withKeepCallback:false];
+        return false;
+    }
+
+    return true;
 }
 
 -(AJ_Object*)createObjectListFromObjectDescriptions:(NSArray*)objectDescriptions {
@@ -174,6 +197,10 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
 
 -(void)startAdvertisingName:(CDVInvokedUrlCommand*)command {
     [self.commandDelegate runInBackground:^{
+        if(![self verifyConnectedToBus:command]) {
+            return;
+        }
+
         NSString* nameToAdvertise = [command argumentAtIndex:0];
         NSNumber* portToHostOn = [command argumentAtIndex:1];
 
@@ -251,6 +278,10 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
 
 -(void)stopAdvertisingName:(CDVInvokedUrlCommand*)command {
     [self.commandDelegate runInBackground:^{
+        if(![self verifyConnectedToBus:command]) {
+            return;
+        }
+
         NSString* wellKnownName = [command argumentAtIndex:0 withDefault:nil andClass:[NSString class]];
         NSNumber* port = [command argumentAtIndex:1 withDefault:nil andClass:[NSNumber class]];
 
@@ -331,6 +362,10 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
 // exec(listener, function() { }, "AllJoyn", "addListener", [indexList, responseType, listener]);
 -(void)addListener:(CDVInvokedUrlCommand*)command {
     [self.commandDelegate runInBackground:^{
+        if(![self verifyConnectedToBus:command]) {
+            return;
+        }
+
         NSArray* indexList = [command argumentAtIndex:0];
         NSString* responseType = [command argumentAtIndex:1];
 
@@ -383,6 +418,10 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
 
 -(void)addAdvertisedNameListener:(CDVInvokedUrlCommand*)command {
     [self.commandDelegate runInBackground:^{
+        if(![self verifyConnectedToBus:command]) {
+            return;
+        }
+
         NSString* name = [command argumentAtIndex:0];
 
         AJ_Status status = [self findService:[self busAttachment] withName:name];
@@ -411,7 +450,17 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
 }
 
 -(void)replyAcceptSession:(CDVInvokedUrlCommand*)command {
+    if(![self callbackInProgress]) {
+        AJ_InfoPrintf(("Error: No callback in progress."));
+        [self sendErrorStatus:AJ_ERR_UNEXPECTED toCallback:[command callbackId] withKeepCallback:false];
+        return;
+    }
+
     [self.commandDelegate runInBackground:^{
+        if(![self verifyConnectedToBus:command]) {
+            return;
+        }
+
         NSNumber* msgId = [command argumentAtIndex:0 withDefault:nil andClass:[NSNumber class]];
         //TODO: What type does boolean come through as?
         NSNumber* response = [command argumentAtIndex:1];
@@ -441,6 +490,10 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
 
 -(void)setAcceptSessionListener:(CDVInvokedUrlCommand*)command {
     [self.commandDelegate runInBackground:^{
+        if(![self verifyConnectedToBus:command]) {
+            return;
+        }
+
         uint32_t acceptSessionId = AJ_METHOD_ACCEPT_SESSION;
         NSNumber* acceptSessionKey = [NSNumber numberWithUnsignedInt:acceptSessionId];
         MsgHandler acceptSessionHandler = ^bool(AJ_Message* pMsg) {
@@ -466,6 +519,10 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
 
 -(void)addListenerForReply:(CDVInvokedUrlCommand*)command {
     [self.commandDelegate runInBackground:^{
+        if(![self verifyConnectedToBus:command]) {
+            return;
+        }
+
         NSArray* indexList = [command argumentAtIndex:0];
         NSString* responseType = [command argumentAtIndex:1];
 
@@ -526,7 +583,17 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
 }
 
 -(void)sendErrorReply:(CDVInvokedUrlCommand*)command {
+    if(![self callbackInProgress]) {
+        AJ_InfoPrintf(("Error: No callback in progress."));
+        [self sendErrorStatus:AJ_ERR_UNEXPECTED toCallback:[command callbackId] withKeepCallback:false];
+        return;
+    }
+
     [self.commandDelegate runInBackground:^{
+        if(![self verifyConnectedToBus:command]) {
+            return;
+        }
+
         NSNumber* msgId = [command argumentAtIndex:0 withDefault:nil andClass:[NSNumber class]];
         NSString* errorMessage = [command argumentAtIndex:1 withDefault:@"" andClass:[NSString class]];
 
@@ -560,7 +627,17 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
 }
 
 -(void)sendSuccessReply:(CDVInvokedUrlCommand*)command {
+    if(![self callbackInProgress]) {
+        AJ_InfoPrintf(("Error: No callback in progress."));
+        [self sendErrorStatus:AJ_ERR_UNEXPECTED toCallback:[command callbackId] withKeepCallback:false];
+        return;
+    }
+
     [self.commandDelegate runInBackground:^{
+        if(![self verifyConnectedToBus:command]) {
+            return;
+        }
+
         NSNumber* msgId = [command argumentAtIndex:0 withDefault:nil andClass:[NSNumber class]];
         NSString* replyArgumentSignature = [command argumentAtIndex:1 withDefault:@"" andClass:[NSString class]];
         NSArray* replyArguments = [command argumentAtIndex:2 withDefault:[NSArray new] andClass:[NSArray class]];
@@ -603,6 +680,10 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
 
 -(void)setSignalRule:(CDVInvokedUrlCommand*)command {
     [self.commandDelegate runInBackground:^{
+        if(![self verifyConnectedToBus:command]) {
+            return;
+        }
+
         NSString* ruleString = [command argumentAtIndex:0];
         NSNumber* ruleType = [command argumentAtIndex:1];
 
@@ -626,6 +707,10 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
 
 -(void)joinSession:(CDVInvokedUrlCommand*)command {
     [self.commandDelegate runInBackground:^{
+        if(![self verifyConnectedToBus:command]) {
+            return;
+        }
+
         printf("+joinSessionAsyc\n");
         AJ_Status status = AJ_OK;
         NSDictionary* server = [command argumentAtIndex:0];
@@ -683,6 +768,10 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
 
 -(void)leaveSession:(CDVInvokedUrlCommand*) command {
     [self.commandDelegate runInBackground:^{
+        if(![self verifyConnectedToBus:command]) {
+            return;
+        }
+
         NSNumber* sessionId = [command argumentAtIndex:0];
 
         if(![sessionId isKindOfClass:[NSNumber class]]) {
@@ -704,6 +793,10 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
 
 -(void)invokeMember:(CDVInvokedUrlCommand*) command {
     [self.commandDelegate runInBackground:^{
+        if(![self verifyConnectedToBus:command]) {
+            return;
+        }
+
         NSNumber* sessionId = [command argumentAtIndex:0];
         NSString* destination = [command argumentAtIndex:1];
         NSString* signature = [command argumentAtIndex:2];
@@ -871,6 +964,7 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
 
     }];
 }
+
 -(Marshal_Status)unmarshalArgumentFor:(AJ_Message*)pMsg withSignature:(NSString*)signature toValues:(NSMutableArray*)values {
     return [self unmarshalArgumentsFor:pMsg withSignature:signature toValues:values limit:1];
 }
@@ -1501,6 +1595,14 @@ dispatch_source_t CreateDispatchTimer(uint64_t interval,
     [self.commandDelegate sendPluginResult:pluginResult callbackId:callbackId];
 }
 
+-(void)sendSuccessStatus:(AJ_Status)status toCallback:(NSString*) callbackId withKeepCallback:(Boolean)keepCallback {
+    printf("SENDING : %s\n", AJ_StatusText(status));
+    CDVPluginResult* pluginResult = nil;
+    pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsInt:status];
+    [pluginResult setKeepCallbackAsBool:keepCallback];
+    [self.commandDelegate sendPluginResult:pluginResult callbackId:callbackId];
+}
+
 -(void)sendErrorStatus:(AJ_Status)status toCallback:(NSString*) callbackId withKeepCallback:(Boolean)keepCallback {
     printf("SENDING ERROR: %s\n", AJ_StatusText(status));
     CDVPluginResult* pluginResult = nil;
@@ -1656,7 +1758,9 @@ AJ_Message _msg;
         if(status == AJ_ERR_READ || status == AJ_ERR_WRITE) {
             printf("Network error. Disconnecting.");
             [self internalDisconnect];
-            [self sendErrorStatus:status toCallback:[self connectCallbackId] withKeepCallback:false];
+            if([self connectionErrorCallbackId] != nil) {
+                [self sendSuccessStatus:status toCallback:[self connectionErrorCallbackId] withKeepCallback:true];
+            }
         }
         
         return;
