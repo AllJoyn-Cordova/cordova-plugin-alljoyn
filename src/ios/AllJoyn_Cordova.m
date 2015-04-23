@@ -189,9 +189,11 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
                     [[self MessageHandlers] removeObjectForKey:bindSessionPortReplyKey];
                     printf("Callling AJ_BusRequestName for %s\n", [nameToAdvertise UTF8String]);
                     AJ_Status status = AJ_BusRequestName([self busAttachment], [nameToAdvertise UTF8String], 0);
+
                     if(status == AJ_OK) {
                         uint32_t requestNameReplyId = AJ_REPLY_ID(AJ_METHOD_REQUEST_NAME);
                         NSNumber* requestNameReplyKey = [NSNumber numberWithUnsignedInt:requestNameReplyId];
+
                         MsgHandler requestNameReplyHandler = ^bool(AJ_Message* pMsg) {
                             printf("Got busRequestName reply\n");
                             [[self MessageHandlers] removeObjectForKey:requestNameReplyKey];
@@ -225,6 +227,7 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
 
                             return true; // requestNameReplyHandler
                         };
+
                         [[self MessageHandlers] setObject:requestNameReplyHandler forKey:requestNameReplyKey];
 
                     } else {
