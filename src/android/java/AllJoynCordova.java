@@ -878,8 +878,7 @@ public class AllJoynCordova extends CordovaPlugin
 
             if(status == AJ_Status.AJ_OK)
             {
-                long unbindSessionReplyId = AJ_Reply_ID(AJ_METHOD_UNBIND_SESSION);
-                final long unbindSessionReplyKey = unbindSessionReplyId;
+                final long unbindSessionReplyKey = AJ_Reply_ID(AJ_METHOD_UNBIND_SESSION);
 
                 m_pMessageHandlers.put
                 (
@@ -900,8 +899,7 @@ public class AllJoynCordova extends CordovaPlugin
 
                                 if (status == AJ_Status.AJ_OK)
                                 {
-                                    long releaseNameReplyId = AJ_Reply_ID(AJ_METHOD_RELEASE_NAME);
-                                    final long releaseNameReplyKey = releaseNameReplyId;
+                                    final long releaseNameReplyKey = AJ_Reply_ID(AJ_METHOD_RELEASE_NAME);
 
                                     m_pMessageHandlers.put
                                     (
@@ -922,8 +920,7 @@ public class AllJoynCordova extends CordovaPlugin
 
                                                     if (status == AJ_Status.AJ_OK)
                                                     {
-                                                        long stopAdvertiseNameReplyId = AJ_Reply_ID(AJ_METHOD_ADVERTISE_NAME);
-                                                        final long stopAdvertiseNameReplyKey = stopAdvertiseNameReplyId;
+                                                        final long stopAdvertiseNameReplyKey = AJ_Reply_ID(AJ_METHOD_ADVERTISE_NAME);
 
                                                         m_pMessageHandlers.put
                                                         (
@@ -1257,6 +1254,10 @@ public class AllJoynCordova extends CordovaPlugin
                                         }
                                     }
                                 );
+                            }
+                            else
+                            {
+                                callbackContext.success("Send signal successfully!");
                             }
                         }
                     }
