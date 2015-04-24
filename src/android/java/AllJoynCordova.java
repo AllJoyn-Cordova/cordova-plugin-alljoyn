@@ -19,7 +19,8 @@ import org.json.JSONException;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.HashMap;
-
+import java.util.List;
+import java.util.ArrayList;
 
 public class AllJoynCordova extends CordovaPlugin
 {
@@ -408,8 +409,9 @@ public class AllJoynCordova extends CordovaPlugin
         }
         else if (action.equals("replyAcceptSession"))
         {
+            Log.i(TAG, "AllJoyn.replyAcceptSession");
             long msgId = data.getLong(0);
-            long response = data.getLong(1);
+            long response = (data.getBoolean(1) == true ? 1 : 0);
 
             if (msgId == 0)
             {
@@ -447,8 +449,7 @@ public class AllJoynCordova extends CordovaPlugin
         }
         else if (action.equals("setAcceptSessionListener"))
         {
-            long acceptSessionId = AJ_METHOD_ACCEPT_SESSION;
-            final long acceptSessionKey = acceptSessionId;
+            final long acceptSessionKey = AJ_METHOD_ACCEPT_SESSION;
 
             m_pMessageHandlers.put
             (
@@ -806,8 +807,7 @@ public class AllJoynCordova extends CordovaPlugin
 
                                             if (status == AJ_Status.AJ_OK)
                                             {
-                                                long busAdvertiseNameReplyId = AJ_Reply_ID(AJ_METHOD_ADVERTISE_NAME);
-                                                final long busAdvertiseNameReplyKey = busAdvertiseNameReplyId;
+                                                final long busAdvertiseNameReplyKey = AJ_Reply_ID(AJ_METHOD_ADVERTISE_NAME);
 
                                                 m_pMessageHandlers.put
                                                 (
@@ -867,6 +867,8 @@ public class AllJoynCordova extends CordovaPlugin
                 callbackContext.error("startAdvertisingName: Failure in AJ_BusBindSessionPort " + alljoyn.AJ_StatusText(status));
                 return false;
             }
+
+            return true;
         }
         else if (action.equals("stopAdvertisingName"))
         {
@@ -1170,10 +1172,15 @@ public class AllJoynCordova extends CordovaPlugin
                             int signalFlags = 0;
                             long ttl = 0;
 
+                            if (isOwnSession)
+                            {
+                                signalFlags = alljoynConstants.AJ_FLAG_GLOBAL_BROADCAST;
+                            }
+
                             if (sessionId == 0 && destinationChars == "")
                             {
                                 Log.i(TAG, "Sessionless signal");
-                                signalFlags = alljoynConstants.AJ_FLAG_SESSIONLESS;
+                                signalFlags |= alljoynConstants.AJ_FLAG_SESSIONLESS;
                             }
 
                             status = alljoyn.AJ_MarshalSignal(bus, msg, msgId, destinationChars, sessionId, signalFlags, ttl);
@@ -1322,8 +1329,39 @@ public class AllJoynCordova extends CordovaPlugin
 
     void sendSuccessMultipart(JSONArray array, CallbackContext callbackContext, boolean keepCallback) throws JSONException
     {
+        // Convert from JSONArray to List
+        List<PluginResult> results = new ArrayList<PluginResult>();
+
+        for (int i = 0; i < array.length(); i++)
+        {
+            if (array.get(i) instanceof String)
+            {
+                results.add(i, new PluginResult(PluginResult.Status.OK, array.getString(i)));
+            }
+            else if (array.get(i) instanceof JSONArray)
+            {
+                results.add(i, new PluginResult(PluginResult.Status.OK, array.getJSONArray(i)));
+            }
+            else if (array.get(i) instanceof JSONObject )
+            {
+                results.add(i, new PluginResult(PluginResult.Status.OK, array.getJSONObject(i)));
+            }
+            else if (array.get(i) instanceof Integer)
+            {
+                results.add(i, new PluginResult(PluginResult.Status.OK, array.getInt(i)));
+            }
+            else if (array.get(i) instanceof Float)
+            {
+                results.add(i, new PluginResult(PluginResult.Status.OK, new Float(array.getDouble(i))));
+            }
+            else if (array.get(i) instanceof Boolean)
+            {
+                results.add(i, new PluginResult(PluginResult.Status.OK, array.getBoolean(i)));
+            }
+        }
+
         // Send plugin result
-        PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, array);
+        PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, results);
         pluginResult.setKeepCallback(keepCallback);
         callbackContext.sendPluginResult(pluginResult);
     }
