@@ -134,7 +134,7 @@ double* setV_double(const char* val)
 
 long getMsgPointer(AJ_Message* msg) 
 {
-	return &msg;
+	return (long)(msg);
 }
 
 %}
