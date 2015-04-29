@@ -115,7 +115,7 @@ public class AllJoynCordova extends CordovaPlugin
                                 }
                                 catch (Exception e)
                                 {
-                                    Log.i(TAG, e.toString());
+                                    Log.i(TAG, "Error in msg loop: " + e.getMessage());
                                 }
                             }
                             else
@@ -150,8 +150,8 @@ public class AllJoynCordova extends CordovaPlugin
                         }
                     }
                 },
-                AJ_MESSAGE_SLOW_LOOP_INTERVAL,
-                AJ_MESSAGE_SLOW_LOOP_INTERVAL
+                AJ_MESSAGE_FAST_LOOP_INTERVAL,
+                AJ_MESSAGE_FAST_LOOP_INTERVAL
         );
 
         m_isConnectedToBus = false;
@@ -173,6 +173,7 @@ public class AllJoynCordova extends CordovaPlugin
     {
         if (action.equals("connect"))
         {
+            Log.i(TAG, "AllJoyn.connect");
             if (!m_isConnectedToBus)
             {
                 new BackgroundTask()
@@ -204,10 +205,12 @@ public class AllJoynCordova extends CordovaPlugin
                             if (status == AJ_Status.AJ_OK)
                             {
                                 m_isConnectedToBus = true;
+                                Log.i(TAG, "Connected to router!");
                                 callbackContext.success("Connected to router!");
                             }
                             else
                             {
+                                Log.i(TAG, "Error connecting to router!");
                                 callbackContext.error("Error connecting to router: " + status.toString());
                             }
                         }
@@ -217,12 +220,15 @@ public class AllJoynCordova extends CordovaPlugin
                         }
                     }
                 };
+
+                return true;
             }
 
             return true;
         }
         if (action.equals("disconnect"))
         {
+            Log.i(TAG, "AllJoyn.disconnect");
             // Disconnect bus
             alljoyn.AJ_Disconnect(bus);
             m_isConnectedToBus = false;
@@ -449,6 +455,7 @@ public class AllJoynCordova extends CordovaPlugin
         }
         else if (action.equals("setAcceptSessionListener"))
         {
+            Log.i(TAG, "AllJoyn.setAcceptSessionListener");
             final long acceptSessionKey = AJ_METHOD_ACCEPT_SESSION;
 
             m_pMessageHandlers.put
@@ -480,6 +487,7 @@ public class AllJoynCordova extends CordovaPlugin
         }
         else if (action.equals("addListenerForReply"))
         {
+            Log.i(TAG, "AllJoyn.addListenerForReply");
             JSONArray indexList = data.getJSONArray(0);
             final String responseType = data.getString(1);
 
@@ -549,9 +557,13 @@ public class AllJoynCordova extends CordovaPlugin
                     }
                 }
             );
+
+            m_bStartTimer = true;
+            return true;
         }
         else if (action.equals("sendErrorReply"))
         {
+            Log.i(TAG, "AllJoyn.sendErrorReply");
             long msgId = data.getLong(0);
             String errorMessage = data.getString(1);
 
@@ -603,6 +615,7 @@ public class AllJoynCordova extends CordovaPlugin
         }
         else if (action.equals("sendSuccessReply"))
         {
+            Log.i(TAG, "AllJoyn.sendSuccessReply");
             long msgId = data.getLong(0);
             String replyArgumentSignature = data.getString(1);
 
@@ -1229,10 +1242,16 @@ public class AllJoynCordova extends CordovaPlugin
                                             JSONArray outValues = null;
                                             m_pMessageHandlers.remove(replyMsgId);
 
-                                            if (pMsg == null || pMsg.getHdr() == null || pMsg.getHdr().getMsgType() == alljoynConstants.AJ_MSG_ERROR)
+                                            if (pMsg == null || pMsg.getHdr() == null)
                                             {
                                                 // Error
                                                 callbackContext.error("Error" + alljoyn.AJ_StatusText(status));
+                                                return true;
+                                            }
+
+                                            if (pMsg.getHdr().getMsgType() == alljoynConstants.AJ_MSG_ERROR)
+                                            {
+                                                callbackContext.error(pMsg.getError());
                                                 return true;
                                             }
 
@@ -1335,7 +1354,11 @@ public class AllJoynCordova extends CordovaPlugin
 
         for (int i = 0; i < array.length(); i++)
         {
-            if (array.get(i) instanceof String)
+            if (array.isNull(i))
+            {
+                results.add(i, new PluginResult(PluginResult.Status.OK));
+            }
+            else if (array.get(i) instanceof String)
             {
                 results.add(i, new PluginResult(PluginResult.Status.OK, array.getString(i)));
             }
