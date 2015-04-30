@@ -21,7 +21,9 @@
 
     <!-- android -->
     <platform name="android">
+		<hook type="after_platform_add" src="scripts/androidUpdateSettings.js" />
 		<hook type="before_build" src="scripts/androidBeforeBuild.js" />
+		<hook type="after_build" src="scripts/androidUpdateSettings.js" />
 
         <config-file target="res/xml/config.xml" parent="/*">
             <feature name="AllJoyn">
@@ -143,7 +145,6 @@
 		
 		<!-- gradle -->
 		<source-file src="src/android/gradle/build.gradle" target-dir="AllJoynLib" />
-		<source-file src="src/android/gradle/settings.gradle" target-dir="." />
 		<source-file src="src/android/gradle/AndroidManifest.xml" target-dir="AllJoynLib/src/main" />
     </platform>
    
