@@ -71,6 +71,8 @@ There are some external dependencies when building the plugin for the Android pl
 $ brew install ant gradle swig
 ```
 
+The swig version needs to be 3.0 or higher.
+
 After dependencies are met, the steps to build and run are something like:
 
 ```
