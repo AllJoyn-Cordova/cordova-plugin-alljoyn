@@ -65,15 +65,15 @@ In addition to the Android SDK, the NDK is required. See https://developer.andro
 
 The environment variables ANDROID_HOME and ANDROID_NDK_HOME must be set to the point to the locations where the Android SDK and NDK are installed.
 
-There are some external dependencies when building the plugin for the Android platform. When building on a Mac, one of the easiest ways to install the dependencies is via Homebrew http://brew.sh/ with following command:
+There are some external dependencies when building the plugin for the Android platform. Those are [Ant](http://ant.apache.org/), [Gradle](http://gradle.org/) and [Swig](http://www.swig.org/) (Swig version needs to be 3.0 or higher). Before building for Android, make sure the respective binaries are found from your PATH environment variable.
+
+When building on a Mac, one of the easiest ways to install the dependencies is via [Homebrew](http://brew.sh/) with following command:
 
 ```
 $ brew install ant gradle swig
 ```
 
-The swig version needs to be 3.0 or higher.
-
-After dependencies are met, the steps to build and run are something like:
+After the dependencies are met, the steps to build and run using the Cordova CLI are something like:
 
 ```
 $ cordova platform add android
