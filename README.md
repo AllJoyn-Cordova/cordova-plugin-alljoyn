@@ -61,11 +61,17 @@ Alternative for running with Cordova scripts is to open the solution file genera
 Building For Android
 --------------------
 
-In addition to the Android SDK, the NDK is required. See https://developer.android.com/tools/sdk/ndk/index.html for installation instructions.
+In addition to the Android SDK, the NDK is required. See https://developer.android.com/tools/sdk/ndk/index.html for installation instructions. Recommended NDK revision on Windows is 10d, because 10e has been identified to create an issue with long paths.
 
 The environment variables ANDROID_HOME and ANDROID_NDK_HOME must be set to the point to the locations where the Android SDK and NDK are installed.
 
 There are some external dependencies when building the plugin for the Android platform. Those are [Ant](http://ant.apache.org/), [Gradle](http://gradle.org/) and [Swig](http://www.swig.org/) (Swig version needs to be 3.0 or higher). Before building for Android, make sure the respective binaries are found from your PATH environment variable.
+
+The plugin build process is currently depending on Android build tools version 20.0.0. If you don't have that installed, it can be obtained using the [Android SDK manager](http://developer.android.com/tools/help/sdk-manager.html) or via command line with command:
+
+```
+$ android update sdk --no-ui --all --filter build-tools-20.0.0
+```
 
 When building on a Mac, one of the easiest ways to install the dependencies is via [Homebrew](http://brew.sh/) with following command:
 
