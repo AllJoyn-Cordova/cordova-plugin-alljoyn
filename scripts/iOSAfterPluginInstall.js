@@ -17,7 +17,7 @@ module.exports = function (context) {
     )[0];
     var projectName = xCodeProjectPath.substring(0, xCodeProjectPath.indexOf('.xcodeproj'));
 
-    var sourcePath = path.join(platformPath, projectName, 'Plugins', 'org.allseen.alljoyn');
+    var sourcePath = path.join(platformPath, projectName, 'Plugins', 'cordova-plugin-alljoyn');
 
     var patchFile = path.join(path.dirname(context.scriptLocation), 'ajtcl-ios.patch');
     var patchCommand = 'patch -d \'' + sourcePath + '\' -p1 < ' + patchFile;
