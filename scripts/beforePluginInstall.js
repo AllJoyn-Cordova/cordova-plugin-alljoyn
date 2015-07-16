@@ -8,7 +8,7 @@ module.exports = function (context) {
     var Q = context.requireCordovaModule('q');
     var deferral = new Q.defer();
 
-    var ajtclDirectory = path.join('plugins', 'org.allseen.alljoyn', 'src', 'ajtcl');
+    var ajtclDirectory = path.join('plugins', 'cordova-plugin-alljoyn', 'src', 'ajtcl');
     var ajtclUpstream = 'https://github.com/AllJoyn-Cordova/ajtcl.git';
     var ajtclBranch = 'RB14.12';
 

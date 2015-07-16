@@ -41,7 +41,7 @@ Using The Plugin On Windows
 
 ```
 $ cd /path/to/your/cordova/app
-$ cordova add [/path/to/plugin or <url to this git repo> or org.allseen.alljoyn]
+$ cordova add [/path/to/plugin or https://github.com/AllJoyn-Cordova/cordova-plugin-alljoyn.git or cordova-plugin-alljoyn]
 $ cordova platform add windows
 ```
 
@@ -52,7 +52,7 @@ Running With Cordova Scripts:
 $ cordova run windows --emulator --archs="x86" -- -phone
 // Running on Windows Phone 8.1 device
 $ cordova run windows --device --archs="arm" -- -phone
-// To run on desktop (current default is Windows 8.0 build)
+// To run on Windows
 $ cordova run windows --device --archs="x64" -- -win
 ```
 
@@ -61,7 +61,7 @@ Alternative for running with Cordova scripts is to open the solution file genera
 Building For Android
 --------------------
 
-In addition to the Android SDK, the NDK is required. See https://developer.android.com/tools/sdk/ndk/index.html for installation instructions. Recommended NDK revision on Windows is 10d, because 10e has been identified to create an issue with long paths.
+In addition to the Android SDK, the NDK is required. See https://developer.android.com/tools/sdk/ndk/index.html for installation instructions.
 
 The environment variables ANDROID_HOME and ANDROID_NDK_HOME must be set to the point to the locations where the Android SDK and NDK are installed.
 
@@ -86,6 +86,14 @@ $ cordova platform add android
 $ cordova build android
 $ cordova run android
 ```
+
+If the Android build fails on Windows with an error like:
+
+```
+[...]\AllJoynLib\src\main\jni\aj_keyauthentication.o.d: No such file or directory
+```
+
+It might be caused by hitting the maximum path length limitation. As a workaround, try moving your project to a shorter path.
 
 Running Tests
 -------------
