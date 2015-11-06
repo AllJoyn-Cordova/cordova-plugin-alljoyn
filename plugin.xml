@@ -22,8 +22,8 @@
     <!-- android -->
     <platform name="android">
 		<hook type="after_platform_add" src="scripts/androidUpdateSettings.js" />
-		<hook type="before_build" src="scripts/androidBeforeBuild.js" />
-		<hook type="after_build" src="scripts/androidUpdateSettings.js" />
+		<hook type="before_compile" src="scripts/androidBeforeBuild.js" />
+		<hook type="after_compile" src="scripts/androidUpdateSettings.js" />
 
         <config-file target="res/xml/config.xml" parent="/*">
             <feature name="AllJoyn">
