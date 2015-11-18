@@ -4,13 +4,12 @@ machine:
 
 dependencies:
   pre:
-    - sudo add-apt-repository -y ppa:cwchien/gradle; sudo apt-get update -y; sudo apt-get install -y swig gradle
+    - sudo add-apt-repository -y ppa:cwchien/gradle
+    - sudo add-apt-repository -y ppa:teward/swig3.0
+    - sudo apt-get update -y
+    - sudo apt-get install -y swig3.0 gradle
+    - sudo ln -sf /usr/bin/swig3.0 /usr/bin/swig
 
 test:
-  pre:
-    - emulator -avd circleci-android21 -no-audio -no-window:
-        background: true
-        parallel: true
-    - circle-android wait-for-boot
   override:
     - npm run build-only

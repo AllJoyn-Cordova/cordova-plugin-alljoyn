@@ -1,17 +1,33 @@
 {
-    "version": "0.0.2",
-    "name": "org.allseen.alljoyn",
+    "version": "0.0.5",
+    "name": "cordova-plugin-alljoyn",
     "description": "Cordova AllJoyn Plugin",
     "repository": {
         "type": "git",
-        "url": "https://github.com/AllJoyn-Cordova/cordova-plugin-alljoyn.git"
+        "url": "https://github.com/AllJoyn-Cordova/cordova-plugin-alljoyn"
+    },
+    "bugs": {
+        "url": "https://github.com/AllJoyn-Cordova/cordova-plugin-alljoyn/issues"
+    },
+    "keywords": [
+        "cordova",
+        "alljoyn",
+        "ecosystem:cordova"
+    ],
+    "cordova": {
+        "id": "cordova-plugin-alljoyn",
+        "platforms": [
+            "android",
+            "ios",
+            "windows"
+        ]
     },
     "scripts": {
         "test": "node tests/run.js",
         "build-only": "node tests/run.js build-only"
     },
     "devDependencies": {
-        "cordova": "^4.3.0",
+        "cordova": "^5.1.1",
         "cordova-parametic": "vjrantal/cordova-paramedic",
         "grunt": "^0.4.5",
         "grunt-jscodesniffer": "^0.1.10",

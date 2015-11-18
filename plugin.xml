@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <plugin xmlns="http://www.phonegap.com/ns/plugins/1.0"
     xmlns:android="http://schemas.android.com/apk/res/android"
-    id="org.allseen.alljoyn"
-    version="0.0.4">
+    id="cordova-plugin-alljoyn"
+    version="0.0.5">
 
     <name>AllJoyn</name>
     <description>Cordova AllJoyn Plugin</description>
@@ -21,7 +21,9 @@
 
     <!-- android -->
     <platform name="android">
-		<hook type="before_build" src="scripts/androidBeforeBuild.js" />
+		<hook type="after_platform_add" src="scripts/androidUpdateSettings.js" />
+		<hook type="before_compile" src="scripts/androidBeforeBuild.js" />
+		<hook type="after_compile" src="scripts/androidUpdateSettings.js" />
 
         <config-file target="res/xml/config.xml" parent="/*">
             <feature name="AllJoyn">
@@ -143,7 +145,6 @@
 		
 		<!-- gradle -->
 		<source-file src="src/android/gradle/build.gradle" target-dir="AllJoynLib" />
-		<source-file src="src/android/gradle/settings.gradle" target-dir="." />
 		<source-file src="src/android/gradle/AndroidManifest.xml" target-dir="AllJoynLib/src/main" />
     </platform>
    

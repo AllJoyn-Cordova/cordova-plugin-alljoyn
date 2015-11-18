@@ -41,7 +41,7 @@ Using The Plugin On Windows
 
 ```
 $ cd /path/to/your/cordova/app
-$ cordova add [/path/to/plugin or <url to this git repo> or org.allseen.alljoyn]
+$ cordova add [/path/to/plugin or https://github.com/AllJoyn-Cordova/cordova-plugin-alljoyn.git or cordova-plugin-alljoyn]
 $ cordova platform add windows
 ```
 
@@ -52,7 +52,7 @@ Running With Cordova Scripts:
 $ cordova run windows --emulator --archs="x86" -- -phone
 // Running on Windows Phone 8.1 device
 $ cordova run windows --device --archs="arm" -- -phone
-// To run on desktop (current default is Windows 8.0 build)
+// To run on Windows
 $ cordova run windows --device --archs="x64" -- -win
 ```
 
@@ -65,19 +65,35 @@ In addition to the Android SDK, the NDK is required. See https://developer.andro
 
 The environment variables ANDROID_HOME and ANDROID_NDK_HOME must be set to the point to the locations where the Android SDK and NDK are installed.
 
-There are some external dependencies when building the plugin for the Android platform. When building on a Mac, one of the easiest ways to install the dependencies is via Homebrew http://brew.sh/ with following command:
+There are some external dependencies when building the plugin for the Android platform. Those are [Ant](http://ant.apache.org/), [Gradle](http://gradle.org/) and [Swig](http://www.swig.org/) (Swig version needs to be 3.0 or higher). Before building for Android, make sure the respective binaries are found from your PATH environment variable.
+
+The plugin build process is currently depending on Android build tools version 20.0.0. If you don't have that installed, it can be obtained using the [Android SDK manager](http://developer.android.com/tools/help/sdk-manager.html) or via command line with command:
+
+```
+$ android update sdk --no-ui --all --filter build-tools-20.0.0
+```
+
+When building on a Mac, one of the easiest ways to install the dependencies is via [Homebrew](http://brew.sh/) with following command:
 
 ```
 $ brew install ant gradle swig
 ```
 
-After dependencies are met, the steps to build and run are something like:
+After the dependencies are met, the steps to build and run using the Cordova CLI are something like:
 
 ```
 $ cordova platform add android
 $ cordova build android
 $ cordova run android
 ```
+
+If the Android build fails on Windows with an error like:
+
+```
+[...]\AllJoynLib\src\main\jni\aj_keyauthentication.o.d: No such file or directory
+```
+
+It might be caused by hitting the maximum path length limitation. As a workaround, try moving your project to a shorter path.
 
 Running Tests
 -------------
