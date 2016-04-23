@@ -14,6 +14,9 @@
 // in which case other handlers will have a chance at it
 typedef bool (^MsgHandler)(AJ_Message*);
 
+// Typedef to hold generic action that we will execute in the message loop
+typedef void (^MsgAction)();
+
 typedef struct {
     AJ_Status status;
     unsigned int nextArgumentIndex;
@@ -29,6 +32,8 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
 // If a message handler exists for a given message id it will be
 // invoked with a pointer to the message when it is being unmarshalled
 @property NSMutableDictionary* MessageHandlers;
+// List of actions to execute in the message loop
+@property NSMutableArray* OutgoingMessageActions;
 // Used for thread to handle msg loop and other AllJoyn communication
 @property dispatch_queue_t dispatchQueue;
 // used for triggering background thread activity
@@ -70,6 +75,8 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
     _dispatchQueue = dispatch_queue_create("org.cordova.plugin.AllJoyn", NULL);
     // Dictionary for method reply handlers
     _MessageHandlers = [NSMutableDictionary dictionaryWithObjectsAndKeys: nil];
+
+    _OutgoingMessageActions = [NSMutableArray new];
 
     [self createDispatcherTimer];
     return self;
@@ -170,7 +177,7 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
 }
 
 -(void)startAdvertisingName:(CDVInvokedUrlCommand*)command {
-    [self.commandDelegate runInBackground:^{
+    [self.OutgoingMessageActions addObject:^{
         NSString* nameToAdvertise = [command argumentAtIndex:0];
         NSNumber* portToHostOn = [command argumentAtIndex:1];
 
@@ -247,7 +254,7 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
 }
 
 -(void)stopAdvertisingName:(CDVInvokedUrlCommand*)command {
-    [self.commandDelegate runInBackground:^{
+    [self.OutgoingMessageActions addObject:^{
         NSString* wellKnownName = [command argumentAtIndex:0 withDefault:nil andClass:[NSString class]];
         NSNumber* port = [command argumentAtIndex:1 withDefault:nil andClass:[NSNumber class]];
 
@@ -379,7 +386,7 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
 }
 
 -(void)addAdvertisedNameListener:(CDVInvokedUrlCommand*)command {
-    [self.commandDelegate runInBackground:^{
+    [self.OutgoingMessageActions addObject:^{
         NSString* name = [command argumentAtIndex:0];
 
         AJ_Status status = [self findService:[self busAttachment] withName:name];
@@ -599,7 +606,7 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
 }
 
 -(void)setSignalRule:(CDVInvokedUrlCommand*)command {
-    [self.commandDelegate runInBackground:^{
+    [self.OutgoingMessageActions addObject:^{
         NSString* ruleString = [command argumentAtIndex:0];
         NSNumber* ruleType = [command argumentAtIndex:1];
 
@@ -622,7 +629,7 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
 }
 
 -(void)joinSession:(CDVInvokedUrlCommand*)command {
-    [self.commandDelegate runInBackground:^{
+    [self.OutgoingMessageActions addObject:^{
         printf("+joinSessionAsyc\n");
         AJ_Status status = AJ_OK;
         NSDictionary* server = [command argumentAtIndex:0];
@@ -679,7 +686,7 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
 }
 
 -(void)leaveSession:(CDVInvokedUrlCommand*) command {
-    [self.commandDelegate runInBackground:^{
+    [self.OutgoingMessageActions addObject:^{
         NSNumber* sessionId = [command argumentAtIndex:0];
 
         if(![sessionId isKindOfClass:[NSNumber class]]) {
@@ -700,7 +707,7 @@ uint8_t dbgALLJOYN_CORDOVA = 1;
 }
 
 -(void)invokeMember:(CDVInvokedUrlCommand*) command {
-    [self.commandDelegate runInBackground:^{
+    [self.OutgoingMessageActions addObject:^{
         NSNumber* sessionId = [command argumentAtIndex:0];
         NSString* destination = [command argumentAtIndex:1];
         NSString* signature = [command argumentAtIndex:2];
@@ -1598,6 +1605,13 @@ AJ_Message _msg;
 
     AJ_Status status = AJ_OK;
     if(![self callbackInProgress]) {
+        // Send any outgoing messages if any
+        while([[self OutgoingMessageActions] count] > 0) {
+            MsgAction action = [[self OutgoingMessageActions] lastObject];
+            action();
+            [[self OutgoingMessageActions] removeLastObject];
+        }
+
         // get next message
         status = AJ_UnmarshalMsg([self busAttachment], &_msg, MSG_TIMEOUT);
 
